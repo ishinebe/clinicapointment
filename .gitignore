@@ -1,0 +1,11 @@
+# Excel temporary files
+~$*.xls*
+*.tmp
+*.bak
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# VBA export working files
+*.frx
