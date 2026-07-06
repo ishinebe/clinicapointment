@@ -39,6 +39,10 @@ Private Const BLOCK_GAP_ROWS As Long = 2
 Private Const DRAFT_TIME_START_HOUR As Long = 9
 Private Const DRAFT_TIME_END_HOUR As Long = 19
 Private Const DRAFT_HATCH_START_HOUR As Long = 18
+Private Const NEW_TIME_COL As Long = 1
+Private Const OLD_MINUTE_COL As Long = 8
+Private Const FIRST_TIME_ROW As Long = 7
+Private Const LAST_TIME_ROW As Long = 78
 
 Public Sub GenerateAppointmentBook_Phase1()
 
@@ -346,192 +350,104 @@ Private Sub ApplyTemplateDraftTimeAxis(ByVal ws As Worksheet)
         Exit Sub
     End If
 
-    Dim hourCol As Long
-    Dim minuteCol As Long
-
-    If Not FindDraftTimeColumns(ws, templateRange, hourCol, minuteCol) Then
-        Err.Raise vbObjectError + 200, , "Time columns were not found in Template."
-    End If
-
     Dim lastCol As Long
     lastCol = templateRange.Column + templateRange.Columns.Count - 1
 
-    Dim combinedTimeColumnWidth As Double
-    combinedTimeColumnWidth = ws.Columns(hourCol).ColumnWidth + ws.Columns(minuteCol).ColumnWidth
+    Dim lastTimeRowToUse As Long
+    lastTimeRowToUse = Application.WorksheetFunction.Min(LAST_TIME_ROW, ws.Rows.Count)
+
+    UnmergeTemplateDraftTimeColumns ws, NEW_TIME_COL, OLD_MINUTE_COL, FIRST_TIME_ROW, lastTimeRowToUse
+    ClearTemplateDraftOldTimeValues ws, NEW_TIME_COL, OLD_MINUTE_COL, FIRST_TIME_ROW, lastTimeRowToUse
 
     Dim r As Long
-    Dim hourValue As Variant
-    Dim minuteValue As Variant
     Dim slotTime As Date
-    Dim slots As Collection
+    Dim minuteValue As Long
 
-    Set slots = New Collection
+    r = FIRST_TIME_ROW
+    slotTime = TimeSerial(DRAFT_TIME_START_HOUR, 0, 0)
 
-    For r = templateRange.Row To templateRange.Row + templateRange.Rows.Count - 1
+    Do While slotTime <= TimeSerial(DRAFT_TIME_END_HOUR, 0, 0) And r <= lastTimeRowToUse
 
-        hourValue = DraftCellNumber(ws.Cells(r, hourCol))
-        minuteValue = DraftCellNumber(ws.Cells(r, minuteCol))
+        minuteValue = Minute(slotTime)
 
-        If IsDraftTimeSlot(hourValue, minuteValue) Then
-            slotTime = TimeSerial(CLng(hourValue), CLng(minuteValue), 0)
-
-            If slotTime >= TimeSerial(DRAFT_TIME_START_HOUR, 0, 0) And _
-               slotTime <= TimeSerial(DRAFT_TIME_END_HOUR, 0, 0) Then
-                slots.Add Array(r, CLng(hourValue), CLng(minuteValue))
-            End If
-        End If
-
-    Next r
-
-    Dim slot As Variant
-
-    UnmergeTemplateDraftTimeColumns ws, templateRange, hourCol, minuteCol
-
-    For Each slot In slots
-
-        r = CLng(slot(0))
-        slotTime = TimeSerial(CLng(slot(1)), CLng(slot(2)), 0)
-
-        With ws.Cells(r, hourCol)
+        With ws.Cells(r, NEW_TIME_COL)
             .Value = Format(slotTime, "h:mm")
             .NumberFormat = "@"
             .HorizontalAlignment = xlCenter
             .VerticalAlignment = xlCenter
-            .Font.Bold = (CLng(slot(2)) = 0)
-        End With
-
-        With ws.Cells(r, minuteCol)
-            .ClearContents
-            .Borders.LineStyle = xlNone
-            .Interior.Pattern = xlNone
+            .Font.Bold = (minuteValue = 0)
         End With
 
         FormatTemplateDraftTimeRow ws.Range(ws.Cells(r, templateRange.Column), ws.Cells(r, lastCol)), _
-                                   CLng(slot(2)), _
+                                   minuteValue, _
                                    slotTime >= TimeSerial(DRAFT_HATCH_START_HOUR, 0, 0)
 
-    Next slot
+        slotTime = DateAdd("n", 15, slotTime)
+        r = r + 1
 
-    SetTemplateDraftTimeColumnLayout ws, hourCol, minuteCol, combinedTimeColumnWidth
+    Loop
+
+    SetTemplateDraftTimeColumnLayout ws
+    FixTemplateDraftDateDisplays ws, templateRange
 
 End Sub
 
-Private Sub UnmergeTemplateDraftTimeColumns(ByVal ws As Worksheet, ByVal templateRange As Range, ByVal hourCol As Long, ByVal minuteCol As Long)
+Private Sub UnmergeTemplateDraftTimeColumns(ByVal ws As Worksheet, ByVal timeCol As Long, ByVal oldMinuteCol As Long, ByVal firstRow As Long, ByVal lastRow As Long)
 
     Dim r As Long
 
-    For r = templateRange.Row To templateRange.Row + templateRange.Rows.Count - 1
-        If ws.Cells(r, hourCol).MergeCells Then
-            ws.Cells(r, hourCol).MergeArea.UnMerge
+    For r = firstRow To lastRow
+        If ws.Cells(r, timeCol).MergeCells Then
+            ws.Cells(r, timeCol).MergeArea.UnMerge
         End If
 
-        If ws.Cells(r, minuteCol).MergeCells Then
-            ws.Cells(r, minuteCol).MergeArea.UnMerge
+        If ws.Cells(r, oldMinuteCol).MergeCells Then
+            ws.Cells(r, oldMinuteCol).MergeArea.UnMerge
         End If
     Next r
 
 End Sub
 
-Private Sub SetTemplateDraftTimeColumnLayout(ByVal ws As Worksheet, ByVal hourCol As Long, ByVal minuteCol As Long, ByVal combinedTimeColumnWidth As Double)
+Private Sub ClearTemplateDraftOldTimeValues(ByVal ws As Worksheet, ByVal timeCol As Long, ByVal oldMinuteCol As Long, ByVal firstRow As Long, ByVal lastRow As Long)
 
-    With ws.Columns(hourCol)
-        .Hidden = False
-        .ColumnWidth = Application.WorksheetFunction.Max(8, combinedTimeColumnWidth)
+    With ws.Range(ws.Cells(firstRow, timeCol), ws.Cells(lastRow, timeCol))
+        .ClearContents
+        .NumberFormat = "@"
     End With
 
-    With ws.Columns(minuteCol)
+    With ws.Range(ws.Cells(firstRow, oldMinuteCol), ws.Cells(lastRow, oldMinuteCol))
         .ClearContents
-        .ColumnWidth = 0
+        .Borders.LineStyle = xlNone
+        .Interior.Pattern = xlNone
+    End With
+
+End Sub
+
+Private Sub SetTemplateDraftTimeColumnLayout(ByVal ws As Worksheet)
+
+    With ws.Columns(NEW_TIME_COL)
+        .Hidden = False
+        .ColumnWidth = 8.5
+    End With
+
+    With ws.Columns(OLD_MINUTE_COL)
         .Hidden = True
     End With
 
 End Sub
 
-Private Function FindDraftTimeColumns(ByVal ws As Worksheet, ByVal templateRange As Range, ByRef hourCol As Long, ByRef minuteCol As Long) As Boolean
+Private Sub FixTemplateDraftDateDisplays(ByVal ws As Worksheet, ByVal templateRange As Range)
 
-    Dim bestScore As Long
-    Dim bestHourCol As Long
-    Dim bestMinuteCol As Long
-    Dim c As Long
-    Dim r As Long
-    Dim score As Long
-    Dim hourValue As Variant
-    Dim minuteValue As Variant
+    Dim cell As Range
 
-    For c = templateRange.Column To templateRange.Column + templateRange.Columns.Count - 2
-        score = 0
-
-        For r = templateRange.Row To templateRange.Row + templateRange.Rows.Count - 1
-            hourValue = DraftCellNumber(ws.Cells(r, c))
-            minuteValue = DraftCellNumber(ws.Cells(r, c + 1))
-
-            If IsDraftTimeSlot(hourValue, minuteValue) Then
-                score = score + 1
-            End If
-        Next r
-
-        If score > bestScore Then
-            bestScore = score
-            bestHourCol = c
-            bestMinuteCol = c + 1
+    For Each cell In templateRange.Cells
+        If IsDate(cell.Value) Then
+            cell.NumberFormatLocal = "yyyy/m/d"
+            ws.Columns(cell.Column).ColumnWidth = Application.WorksheetFunction.Max(ws.Columns(cell.Column).ColumnWidth, 12)
         End If
-    Next c
+    Next cell
 
-    If bestScore >= 4 Then
-        hourCol = bestHourCol
-        minuteCol = bestMinuteCol
-        FindDraftTimeColumns = True
-    Else
-        FindDraftTimeColumns = False
-    End If
-
-End Function
-
-Private Function DraftCellNumber(ByVal cell As Range) As Variant
-
-    Dim sourceCell As Range
-
-    If cell.MergeCells Then
-        Set sourceCell = cell.MergeArea.Cells(1, 1)
-    Else
-        Set sourceCell = cell
-    End If
-
-    Dim txt As String
-    txt = Trim$(CStr(sourceCell.Value))
-
-    If Len(txt) = 0 Then
-        DraftCellNumber = Empty
-    ElseIf IsNumeric(txt) Then
-        DraftCellNumber = CLng(Val(txt))
-    ElseIf IsDate(txt) Then
-        DraftCellNumber = Hour(CDate(txt))
-    Else
-        DraftCellNumber = Empty
-    End If
-
-End Function
-
-Private Function IsDraftTimeSlot(ByVal hourValue As Variant, ByVal minuteValue As Variant) As Boolean
-
-    If IsEmpty(hourValue) Or IsEmpty(minuteValue) Then
-        IsDraftTimeSlot = False
-        Exit Function
-    End If
-
-    If CLng(hourValue) < 0 Or CLng(hourValue) > 23 Then
-        IsDraftTimeSlot = False
-        Exit Function
-    End If
-
-    Select Case CLng(minuteValue)
-        Case 0, 15, 30, 45
-            IsDraftTimeSlot = True
-        Case Else
-            IsDraftTimeSlot = False
-    End Select
-
-End Function
+End Sub
 
 Private Sub FormatTemplateDraftTimeRow(ByVal rowRange As Range, ByVal minuteValue As Long, ByVal useHatch As Boolean)
 
