@@ -3,12 +3,14 @@ Option Explicit
 '============================================================
 ' ClinicAppointment
 ' Module: AppointmentBook
-' Version: 2026.07.07-Phase1-A1J46-hotfix
+' Version: 2026.07.07-Phase2-operations
 '
 ' Important:
 ' - One-day template range is fixed to Template!A1:J46.
 ' - Do not use UsedRange for Template because stray formatting can expand
 '   the copied area and create hundreds of printed pages.
+' - Template is the finalized design master. The macro changes only values
+'   and limited operational markings after copying each block.
 '============================================================
 
 Private Const SHEET_TEMPLATE As String = "Template"
@@ -22,9 +24,8 @@ Private Const SETTINGS_MONTH_CELL As String = "B3"
 Private Const TEMPLATE_ONE_DAY_RANGE As String = "A1:J46"
 Private Const BLOCK_GAP_ROWS As Long = 2
 
-Private Const DRAFT_TIME_START_HOUR As Long = 9
-Private Const DRAFT_TIME_END_HOUR As Long = 19
-Private Const DRAFT_HATCH_START_HOUR As Long = 18
+Private Const TIME_START_HOUR As Long = 9
+Private Const TIME_END_HOUR As Long = 19
 Private Const NEW_TIME_COL As Long = 1
 Private Const OLD_MINUTE_COL As Long = 8
 Private Const FIRST_TIME_ROW As Long = 7
@@ -36,6 +37,10 @@ End Sub
 
 Public Sub GenerateAppointmentBook_Phase2()
     GenerateAppointmentBookCore "Phase 2"
+End Sub
+
+Public Sub GenerateAppointmentBook_Phase3()
+    GenerateAppointmentBookCore "Phase 3"
 End Sub
 
 Private Sub GenerateAppointmentBookCore(ByVal phaseName As String)
@@ -109,7 +114,7 @@ Private Sub GenerateAppointmentBookCore(ByVal phaseName As String)
         currentDate = DateSerial(targetYear, targetMonth, d)
 
         CopyTemplateBlock wsT, wsO, templateRange, pasteRow
-        ReplaceTemplateDateIfPossible wsO, templateRange, pasteRow, currentDate
+        ApplyOperationalInfo wsO, templateRange, pasteRow, currentDate
 
         pasteRow = pasteRow + blockHeight + BLOCK_GAP_ROWS
     Next d
@@ -191,6 +196,14 @@ Private Sub CopyTemplateRowHeights(ByVal wsT As Worksheet, ByVal wsO As Workshee
     For r = 0 To templateRange.Rows.Count - 1
         wsO.Rows(pasteRow + r).RowHeight = wsT.Rows(templateRange.Row + r).RowHeight
     Next r
+
+End Sub
+
+Private Sub ApplyOperationalInfo(ByVal wsO As Worksheet, ByVal templateRange As Range, ByVal pasteRow As Long, ByVal currentDate As Date)
+
+    ReplaceTemplateDateIfPossible wsO, templateRange, pasteRow, currentDate
+    RenderTimeAxisInBlock wsO, templateRange, pasteRow
+    ApplyClinicHoursInBlock wsO, templateRange, pasteRow, currentDate
 
 End Sub
 
@@ -287,6 +300,129 @@ Private Function ContainsDateMarker(ByVal valueText As String) As Boolean
                           (InStr(valueText, "年") > 0 And InStr(valueText, "月") > 0 And InStr(valueText, "日") > 0))
 
 End Function
+
+Private Sub RenderTimeAxisInBlock(ByVal wsO As Worksheet, ByVal templateRange As Range, ByVal pasteRow As Long)
+
+    Dim lastCol As Long
+    lastCol = templateRange.Column + templateRange.Columns.Count - 1
+
+    Dim r As Long
+    Dim slotTime As Date
+    Dim minuteValue As Long
+
+    slotTime = TimeSerial(TIME_START_HOUR, 0, 0)
+
+    For r = pasteRow + FIRST_TIME_ROW - 1 To pasteRow + LAST_TIME_ROW - 1
+        minuteValue = Minute(slotTime)
+
+        With wsO.Cells(r, NEW_TIME_COL)
+            If .MergeCells Then .MergeArea.UnMerge
+            .Value = Format(slotTime, "h:mm")
+            .NumberFormat = "@"
+            .HorizontalAlignment = xlCenter
+            .VerticalAlignment = xlCenter
+            .Font.Bold = (minuteValue = 0)
+        End With
+
+        With wsO.Range(wsO.Cells(r, templateRange.Column), wsO.Cells(r, lastCol)).Borders(xlEdgeTop)
+            If minuteValue = 0 Then
+                .LineStyle = xlContinuous
+                .Weight = xlMedium
+                .Color = RGB(89, 89, 89)
+            Else
+                .LineStyle = xlDot
+                .Weight = xlThin
+                .Color = RGB(191, 191, 191)
+            End If
+        End With
+
+        slotTime = DateAdd("n", 15, slotTime)
+    Next r
+
+    wsO.Columns(NEW_TIME_COL).Hidden = False
+
+End Sub
+
+Private Sub ApplyClinicHoursInBlock(ByVal wsO As Worksheet, ByVal templateRange As Range, ByVal pasteRow As Long, ByVal currentDate As Date)
+
+    Dim startRow As Long
+    Dim endRow As Long
+    Dim lastCol As Long
+
+    startRow = pasteRow + FIRST_TIME_ROW - 1
+    endRow = pasteRow + LAST_TIME_ROW - 1
+    lastCol = templateRange.Column + templateRange.Columns.Count - 1
+
+    Dim weekdayValue As Long
+    weekdayValue = Weekday(currentDate, vbSunday)
+
+    If IsClosedWeekday(weekdayValue) Then
+        ShadeRows wsO, startRow, endRow, templateRange.Column, lastCol
+        PutClosedLabel wsO, pasteRow, templateRange
+        Exit Sub
+    End If
+
+    Dim closeTime As Date
+    closeTime = GetClinicCloseTime(weekdayValue)
+
+    Dim r As Long
+    Dim slotTime As Date
+
+    slotTime = TimeSerial(TIME_START_HOUR, 0, 0)
+
+    For r = startRow To endRow
+        If slotTime >= closeTime Then
+            ShadeRows wsO, r, r, templateRange.Column, lastCol
+        End If
+        slotTime = DateAdd("n", 15, slotTime)
+    Next r
+
+End Sub
+
+Private Function IsClosedWeekday(ByVal weekdayValue As Long) As Boolean
+
+    IsClosedWeekday = (weekdayValue = vbThursday Or weekdayValue = vbSunday)
+
+End Function
+
+Private Function GetClinicCloseTime(ByVal weekdayValue As Long) As Date
+
+    Select Case weekdayValue
+        Case vbWednesday
+            GetClinicCloseTime = TimeSerial(18, 0, 0)
+        Case vbSaturday
+            GetClinicCloseTime = TimeSerial(17, 30, 0)
+        Case Else
+            GetClinicCloseTime = TimeSerial(19, 0, 0)
+    End Select
+
+End Function
+
+Private Sub ShadeRows(ByVal ws As Worksheet, ByVal firstRow As Long, ByVal lastRow As Long, ByVal firstCol As Long, ByVal lastCol As Long)
+
+    With ws.Range(ws.Cells(firstRow, firstCol), ws.Cells(lastRow, lastCol)).Interior
+        .Pattern = xlLightDown
+        .PatternColor = RGB(217, 217, 217)
+    End With
+
+End Sub
+
+Private Sub PutClosedLabel(ByVal ws As Worksheet, ByVal pasteRow As Long, ByVal templateRange As Range)
+
+    Dim labelRow As Long
+    Dim labelCol As Long
+
+    labelRow = pasteRow + FIRST_TIME_ROW - 1
+    labelCol = templateRange.Column + 1
+
+    With ws.Cells(labelRow, labelCol)
+        .Value = "休診"
+        .HorizontalAlignment = xlCenter
+        .VerticalAlignment = xlCenter
+        .Font.Bold = True
+    End With
+
+End Sub
 
 Private Sub CopyTemplatePrintSettings(ByVal wsT As Worksheet, ByVal wsO As Worksheet, ByVal templateRange As Range, ByVal lastRow As Long)
 
@@ -402,125 +538,7 @@ Private Sub ApplyTemplateDraftTimeAxis(ByVal ws As Worksheet)
         Exit Sub
     End If
 
-    Dim lastCol As Long
-    lastCol = templateRange.Column + templateRange.Columns.Count - 1
-
-    Dim lastTimeRowToUse As Long
-    lastTimeRowToUse = Application.WorksheetFunction.Min(LAST_TIME_ROW, ws.Rows.Count)
-
-    UnmergeTemplateDraftTimeColumns ws, NEW_TIME_COL, OLD_MINUTE_COL, FIRST_TIME_ROW, lastTimeRowToUse
-    ClearTemplateDraftOldTimeValues ws, NEW_TIME_COL, OLD_MINUTE_COL, FIRST_TIME_ROW, lastTimeRowToUse
-
-    Dim r As Long
-    Dim slotTime As Date
-    Dim minuteValue As Long
-
-    r = FIRST_TIME_ROW
-    slotTime = TimeSerial(DRAFT_TIME_START_HOUR, 0, 0)
-
-    Do While slotTime <= TimeSerial(DRAFT_TIME_END_HOUR, 0, 0) And r <= lastTimeRowToUse
-
-        minuteValue = Minute(slotTime)
-
-        With ws.Cells(r, NEW_TIME_COL)
-            .Value = Format(slotTime, "h:mm")
-            .NumberFormat = "@"
-            .HorizontalAlignment = xlCenter
-            .VerticalAlignment = xlCenter
-            .Font.Bold = (minuteValue = 0)
-        End With
-
-        FormatTemplateDraftTimeRow ws.Range(ws.Cells(r, templateRange.Column), ws.Cells(r, lastCol)), _
-                                   minuteValue, _
-                                   slotTime >= TimeSerial(DRAFT_HATCH_START_HOUR, 0, 0)
-
-        slotTime = DateAdd("n", 15, slotTime)
-        r = r + 1
-
-    Loop
-
-    SetTemplateDraftTimeColumnLayout ws
-    FixTemplateDraftDateDisplays ws, templateRange
-
-End Sub
-
-Private Sub UnmergeTemplateDraftTimeColumns(ByVal ws As Worksheet, ByVal timeCol As Long, ByVal oldMinuteCol As Long, ByVal firstRow As Long, ByVal lastRow As Long)
-
-    Dim r As Long
-
-    For r = firstRow To lastRow
-        If ws.Cells(r, timeCol).MergeCells Then
-            ws.Cells(r, timeCol).MergeArea.UnMerge
-        End If
-
-        If ws.Cells(r, oldMinuteCol).MergeCells Then
-            ws.Cells(r, oldMinuteCol).MergeArea.UnMerge
-        End If
-    Next r
-
-End Sub
-
-Private Sub ClearTemplateDraftOldTimeValues(ByVal ws As Worksheet, ByVal timeCol As Long, ByVal oldMinuteCol As Long, ByVal firstRow As Long, ByVal lastRow As Long)
-
-    With ws.Range(ws.Cells(firstRow, timeCol), ws.Cells(lastRow, timeCol))
-        .ClearContents
-        .NumberFormat = "@"
-    End With
-
-    With ws.Range(ws.Cells(firstRow, oldMinuteCol), ws.Cells(lastRow, oldMinuteCol))
-        .ClearContents
-        .Borders.LineStyle = xlNone
-        .Interior.Pattern = xlNone
-    End With
-
-End Sub
-
-Private Sub SetTemplateDraftTimeColumnLayout(ByVal ws As Worksheet)
-
-    With ws.Columns(NEW_TIME_COL)
-        .Hidden = False
-        .ColumnWidth = 8.5
-    End With
-
-    With ws.Columns(OLD_MINUTE_COL)
-        .Hidden = True
-    End With
-
-End Sub
-
-Private Sub FixTemplateDraftDateDisplays(ByVal ws As Worksheet, ByVal templateRange As Range)
-
-    Dim cell As Range
-
-    For Each cell In templateRange.Cells
-        If IsDate(cell.Value) Then
-            cell.NumberFormatLocal = "yyyy/m/d"
-            ws.Columns(cell.Column).ColumnWidth = Application.WorksheetFunction.Max(ws.Columns(cell.Column).ColumnWidth, 12)
-        End If
-    Next cell
-
-End Sub
-
-Private Sub FormatTemplateDraftTimeRow(ByVal rowRange As Range, ByVal minuteValue As Long, ByVal useHatch As Boolean)
-
-    With rowRange.Borders(xlEdgeTop)
-        If minuteValue = 0 Then
-            .LineStyle = xlContinuous
-            .Weight = xlMedium
-            .Color = RGB(89, 89, 89)
-        Else
-            .LineStyle = xlDot
-            .Weight = xlThin
-            .Color = RGB(191, 191, 191)
-        End If
-    End With
-
-    If useHatch Then
-        With rowRange.Interior
-            .Pattern = xlLightDown
-            .PatternColor = RGB(217, 217, 217)
-        End With
-    End If
+    RenderTimeAxisInBlock ws, templateRange, 1
 
 End Sub
 
@@ -556,7 +574,7 @@ Public Sub CheckAppointmentBook_Phase1()
            "Required sheets: Template / Settings / Output" & vbCrLf & _
            "Settings!B2 = Year" & vbCrLf & _
            "Settings!B3 = Month" & vbCrLf & vbCrLf & _
-           "Run macro: GenerateAppointmentBook_Phase2", vbInformation
+           "Run macro: GenerateAppointmentBook_Phase3", vbInformation
     Exit Sub
 
 ErrorHandler:
