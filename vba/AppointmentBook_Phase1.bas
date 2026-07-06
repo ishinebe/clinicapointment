@@ -3,7 +3,7 @@ Option Explicit
 '============================================================
 ' ClinicAppointment
 ' Module: AppointmentBook
-' Version: 2026.07.07-Phase4AB-staff-headers
+' Version: 2026.07.07-Phase4AB-staff-headers-IJ-DH
 '
 ' Important:
 ' - One-day template range is fixed to Template!A1:J46.
@@ -13,6 +13,8 @@ Option Explicit
 ' - Time axis is already designed in Template, so this macro does not redraw it.
 ' - Clinic-hour shading is based on the actual time labels copied from Template.
 ' - Staff headers can be overridden from Settings!B5:F5.
+' - Template column H is intentionally treated as a spacer/narrow column.
+'   DH headers are written to I and J.
 '============================================================
 
 Private Const SHEET_TEMPLATE As String = "Template"
@@ -34,11 +36,11 @@ Private Const LAST_TIME_ROW As Long = 46
 Private Const HEADER_ROW_IN_TEMPLATE As Long = 4
 
 Private Const STAFF_SLOT_COUNT As Long = 5
-Private Const STAFF_COL_1 As Long = 2   ' B
-Private Const STAFF_COL_2 As Long = 4   ' D
-Private Const STAFF_COL_3 As Long = 6   ' F
-Private Const STAFF_COL_4 As Long = 8   ' H
-Private Const STAFF_COL_5 As Long = 9   ' I
+Private Const STAFF_COL_1 As Long = 2    ' B: Dr 1
+Private Const STAFF_COL_2 As Long = 4    ' D: Dr 2
+Private Const STAFF_COL_3 As Long = 6    ' F: Reserve
+Private Const STAFF_COL_4 As Long = 9    ' I: DH 1. H is intentionally skipped.
+Private Const STAFF_COL_5 As Long = 10   ' J: DH 2
 
 Public Sub GenerateAppointmentBook_Phase1()
     GenerateAppointmentBookCore "Phase 1"
@@ -592,7 +594,8 @@ Public Sub CheckAppointmentBook_Phase1()
            "Required sheets: Template / Settings / Output" & vbCrLf & _
            "Settings!B2 = Year" & vbCrLf & _
            "Settings!B3 = Month" & vbCrLf & _
-           "Settings!B5:F5 = Staff headers" & vbCrLf & vbCrLf & _
+           "Settings!B5:F5 = Staff headers" & vbCrLf & _
+           "Staff mapping: B5->B, C5->D, D5->F, E5->I, F5->J" & vbCrLf & vbCrLf & _
            "Run macro: GenerateAppointmentBook_Phase4", vbInformation
     Exit Sub
 
