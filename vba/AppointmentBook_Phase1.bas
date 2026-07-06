@@ -3,7 +3,7 @@ Option Explicit
 '============================================================
 ' ClinicAppointment
 ' Module: AppointmentBook
-' Version: 2026.07.07-Phase4E-blank-is-working
+' Version: 2026.07.07-Phase5A-monthly-close-override
 '
 ' Important:
 ' - One-day template range is fixed to Template!A1:J46.
@@ -17,6 +17,7 @@ Option Explicit
 '   DH headers are written to I and J.
 ' - Settings dropdowns can be created with SetupSettingsDropdowns.
 ' - In work-pattern cells, blank means working. Select only休 when needed.
+' - Settings!B16 can override the clinic close time for the whole generated month.
 '============================================================
 
 Private Const SHEET_TEMPLATE As String = "Template"
@@ -32,6 +33,7 @@ Private Const SETTINGS_STAFF_HEADER_RANGE As String = "B5:F5"
 Private Const SETTINGS_WORK_PATTERN_RANGE As String = "B7:F13"
 Private Const SETTINGS_WEEKDAY_LABEL_RANGE As String = "A7:A13"
 Private Const SETTINGS_STAFF_MASTER_RANGE As String = "H5:H24"
+Private Const SETTINGS_MONTHLY_CLOSE_CELL As String = "B16"
 
 Private Const TEMPLATE_ONE_DAY_RANGE As String = "A1:J46"
 Private Const BLOCK_GAP_ROWS As Long = 2
@@ -65,6 +67,10 @@ Public Sub GenerateAppointmentBook_Phase4()
     GenerateAppointmentBookCore "Phase 4"
 End Sub
 
+Public Sub GenerateAppointmentBook_Phase5()
+    GenerateAppointmentBookCore "Phase 5"
+End Sub
+
 Public Sub SetupSettingsDropdowns()
 
     On Error GoTo ErrorHandler
@@ -78,13 +84,15 @@ Public Sub SetupSettingsDropdowns()
     InitializeStaffMasterFromCurrentHeaders wsS
     ApplyStaffHeaderDropdowns wsS
     ApplyWorkPatternDropdowns wsS
+    ApplyMonthlyCloseDropdown wsS
 
     Application.ScreenUpdating = True
 
     MsgBox "Settings dropdowns are ready." & vbCrLf & _
            "Staff headers: Settings!B5:F5" & vbCrLf & _
            "Work pattern: Settings!B7:F13" & vbCrLf & _
-           "Blank = working, select 休 only when needed.", vbInformation
+           "Monthly close override: Settings!B16" & vbCrLf & _
+           "Blank = normal, select values only when needed.", vbInformation
     Exit Sub
 
 ErrorHandler:
@@ -105,6 +113,7 @@ Private Sub ApplySettingsLabels(ByVal wsS As Worksheet)
     wsS.Range("A12").Value = "土"
     wsS.Range("A13").Value = "日"
 
+    wsS.Range("A16").Value = "当月共通終了時刻"
     wsS.Range("H4").Value = "担当者マスター"
 
 End Sub
@@ -186,6 +195,22 @@ Private Sub ApplyWorkPatternDropdowns(ByVal wsS As Worksheet)
         .InputMessage = "通常は空欄のままです。休みの場合だけ休を選択してください。"
         .ErrorTitle = "入力できません"
         .ErrorMessage = "休を選択するか、空欄のままにしてください。"
+    End With
+
+End Sub
+
+Private Sub ApplyMonthlyCloseDropdown(ByVal wsS As Worksheet)
+
+    With wsS.Range(SETTINGS_MONTHLY_CLOSE_CELL).Validation
+        .Delete
+        .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Operator:=xlBetween, _
+             Formula1:="16:00,16:30,17:00,17:30,18:00,18:30,19:00"
+        .IgnoreBlank = True
+        .InCellDropdown = True
+        .InputTitle = "当月共通終了時刻"
+        .InputMessage = "通常は空欄のままです。その月全体を時短診療にする場合だけ終了時刻を選択してください。"
+        .ErrorTitle = "入力できません"
+        .ErrorMessage = "プルダウンから終了時刻を選択するか、空欄のままにしてください。"
     End With
 
 End Sub
@@ -351,7 +376,7 @@ Private Sub ApplyOperationalInfo(ByVal wsO As Worksheet, ByVal wsS As Worksheet,
     ReplaceTemplateDateIfPossible wsO, templateRange, pasteRow, currentDate
     ReplaceStaffHeadersIfConfigured wsO, wsS, templateRange, pasteRow
     ApplyStaffWorkPatternIfConfigured wsO, wsS, templateRange, pasteRow, currentDate
-    ApplyClinicHoursInBlock wsO, templateRange, pasteRow, currentDate
+    ApplyClinicHoursInBlock wsO, wsS, templateRange, pasteRow, currentDate
 
 End Sub
 
@@ -585,7 +610,7 @@ Private Function ContainsDateMarker(ByVal valueText As String) As Boolean
 
 End Function
 
-Private Sub ApplyClinicHoursInBlock(ByVal wsO As Worksheet, ByVal templateRange As Range, ByVal pasteRow As Long, ByVal currentDate As Date)
+Private Sub ApplyClinicHoursInBlock(ByVal wsO As Worksheet, ByVal wsS As Worksheet, ByVal templateRange As Range, ByVal pasteRow As Long, ByVal currentDate As Date)
 
     Dim startRow As Long
     Dim endRow As Long
@@ -605,7 +630,7 @@ Private Sub ApplyClinicHoursInBlock(ByVal wsO As Worksheet, ByVal templateRange 
     End If
 
     Dim closeTime As Date
-    closeTime = GetClinicCloseTime(weekdayValue)
+    closeTime = GetEffectiveClinicCloseTime(wsS, weekdayValue)
 
     Dim r As Long
     Dim slotTime As Date
@@ -620,6 +645,24 @@ Private Sub ApplyClinicHoursInBlock(ByVal wsO As Worksheet, ByVal templateRange 
 
 End Sub
 
+Private Function GetEffectiveClinicCloseTime(ByVal wsS As Worksheet, ByVal weekdayValue As Long) As Date
+
+    Dim monthlyValue As String
+    Dim monthlyTime As Date
+
+    monthlyValue = Trim$(CStr(wsS.Range(SETTINGS_MONTHLY_CLOSE_CELL).Value))
+
+    If Len(monthlyValue) > 0 Then
+        If TryParseTimeText(monthlyValue, monthlyTime) Then
+            GetEffectiveClinicCloseTime = monthlyTime
+            Exit Function
+        End If
+    End If
+
+    GetEffectiveClinicCloseTime = GetClinicCloseTime(weekdayValue)
+
+End Function
+
 Private Function TryGetTimeFromCell(ByVal cell As Range, ByRef parsedTime As Date) As Boolean
 
     Dim valueText As String
@@ -633,11 +676,21 @@ Private Function TryGetTimeFromCell(ByVal cell As Range, ByRef parsedTime As Dat
     If IsDate(cell.Value) Then
         parsedTime = TimeValue(cell.Value)
         TryGetTimeFromCell = True
-    ElseIf IsDate(valueText) Then
-        parsedTime = TimeValue(valueText)
+    ElseIf TryParseTimeText(valueText, parsedTime) Then
         TryGetTimeFromCell = True
     Else
         TryGetTimeFromCell = False
+    End If
+
+End Function
+
+Private Function TryParseTimeText(ByVal valueText As String, ByRef parsedTime As Date) As Boolean
+
+    If IsDate(valueText) Then
+        parsedTime = TimeValue(valueText)
+        TryParseTimeText = True
+    Else
+        TryParseTimeText = False
     End If
 
 End Function
@@ -823,11 +876,13 @@ Public Sub CheckAppointmentBook_Phase1()
            "Settings!B3 = Month" & vbCrLf & _
            "Settings!B5:F5 = Staff headers" & vbCrLf & _
            "Settings!B7:F13 = Weekly staff work pattern" & vbCrLf & _
+           "Settings!B16 = Monthly common close time" & vbCrLf & _
            "Settings!H5:H24 = Staff master" & vbCrLf & _
            "Blank in B7:F13 means working; select 休 only when needed." & vbCrLf & _
+           "Blank in B16 means normal clinic hours." & vbCrLf & _
            "Staff mapping: B5->B, C5->D, D5->F, E5->I, F5->J" & vbCrLf & vbCrLf & _
            "Run setup macro first: SetupSettingsDropdowns" & vbCrLf & _
-           "Run generation macro: GenerateAppointmentBook_Phase4", vbInformation
+           "Run generation macro: GenerateAppointmentBook_Phase5", vbInformation
     Exit Sub
 
 ErrorHandler:
