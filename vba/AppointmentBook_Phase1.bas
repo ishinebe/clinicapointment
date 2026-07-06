@@ -3,14 +3,14 @@ Option Explicit
 '============================================================
 ' ClinicAppointment
 ' Module: AppointmentBook
-' Version: 2026.07.07-Phase2-operations
+' Version: 2026.07.07-Phase2-preserve-template-time-axis
 '
 ' Important:
 ' - One-day template range is fixed to Template!A1:J46.
 ' - Do not use UsedRange for Template because stray formatting can expand
 '   the copied area and create hundreds of printed pages.
-' - Template is the finalized design master. The macro changes only values
-'   and limited operational markings after copying each block.
+' - Template is the finalized design master.
+' - Time axis is already designed in Template, so this macro does not redraw it.
 '============================================================
 
 Private Const SHEET_TEMPLATE As String = "Template"
@@ -25,7 +25,6 @@ Private Const TEMPLATE_ONE_DAY_RANGE As String = "A1:J46"
 Private Const BLOCK_GAP_ROWS As Long = 2
 
 Private Const TIME_START_HOUR As Long = 9
-Private Const TIME_END_HOUR As Long = 19
 Private Const NEW_TIME_COL As Long = 1
 Private Const OLD_MINUTE_COL As Long = 8
 Private Const FIRST_TIME_ROW As Long = 7
@@ -202,7 +201,6 @@ End Sub
 Private Sub ApplyOperationalInfo(ByVal wsO As Worksheet, ByVal templateRange As Range, ByVal pasteRow As Long, ByVal currentDate As Date)
 
     ReplaceTemplateDateIfPossible wsO, templateRange, pasteRow, currentDate
-    RenderTimeAxisInBlock wsO, templateRange, pasteRow
     ApplyClinicHoursInBlock wsO, templateRange, pasteRow, currentDate
 
 End Sub
@@ -300,48 +298,6 @@ Private Function ContainsDateMarker(ByVal valueText As String) As Boolean
                           (InStr(valueText, "年") > 0 And InStr(valueText, "月") > 0 And InStr(valueText, "日") > 0))
 
 End Function
-
-Private Sub RenderTimeAxisInBlock(ByVal wsO As Worksheet, ByVal templateRange As Range, ByVal pasteRow As Long)
-
-    Dim lastCol As Long
-    lastCol = templateRange.Column + templateRange.Columns.Count - 1
-
-    Dim r As Long
-    Dim slotTime As Date
-    Dim minuteValue As Long
-
-    slotTime = TimeSerial(TIME_START_HOUR, 0, 0)
-
-    For r = pasteRow + FIRST_TIME_ROW - 1 To pasteRow + LAST_TIME_ROW - 1
-        minuteValue = Minute(slotTime)
-
-        With wsO.Cells(r, NEW_TIME_COL)
-            If .MergeCells Then .MergeArea.UnMerge
-            .Value = Format(slotTime, "h:mm")
-            .NumberFormat = "@"
-            .HorizontalAlignment = xlCenter
-            .VerticalAlignment = xlCenter
-            .Font.Bold = (minuteValue = 0)
-        End With
-
-        With wsO.Range(wsO.Cells(r, templateRange.Column), wsO.Cells(r, lastCol)).Borders(xlEdgeTop)
-            If minuteValue = 0 Then
-                .LineStyle = xlContinuous
-                .Weight = xlMedium
-                .Color = RGB(89, 89, 89)
-            Else
-                .LineStyle = xlDot
-                .Weight = xlThin
-                .Color = RGB(191, 191, 191)
-            End If
-        End With
-
-        slotTime = DateAdd("n", 15, slotTime)
-    Next r
-
-    wsO.Columns(NEW_TIME_COL).Hidden = False
-
-End Sub
 
 Private Sub ApplyClinicHoursInBlock(ByVal wsO As Worksheet, ByVal templateRange As Range, ByVal pasteRow As Long, ByVal currentDate As Date)
 
@@ -500,16 +456,13 @@ Public Sub CreateTemplateDraft()
     Dim wsD As Worksheet
     Set wsD = ActiveSheet
     wsD.Name = SHEET_TEMPLATE_DRAFT
-
-    ApplyTemplateDraftTimeAxis wsD
-
     wsD.Activate
 
     Application.EnableEvents = previousEnableEvents
     Application.DisplayAlerts = previousDisplayAlerts
     Application.ScreenUpdating = previousScreenUpdating
 
-    MsgBox "TemplateDraft created.", vbInformation
+    MsgBox "TemplateDraft created. Time axis is preserved from Template.", vbInformation
     Exit Sub
 
 ErrorHandler:
@@ -526,19 +479,6 @@ ErrorHandler:
     MsgBox "Error while creating TemplateDraft." & vbCrLf & _
            "Number: " & Err.Number & vbCrLf & _
            "Description: " & Err.Description, vbCritical
-
-End Sub
-
-Private Sub ApplyTemplateDraftTimeAxis(ByVal ws As Worksheet)
-
-    Dim templateRange As Range
-    Set templateRange = GetTemplateRange(ws)
-
-    If templateRange Is Nothing Then
-        Exit Sub
-    End If
-
-    RenderTimeAxisInBlock ws, templateRange, 1
 
 End Sub
 
