@@ -28,6 +28,7 @@ Option Explicit
 '============================================================
 
 Private Const SHEET_TEMPLATE As String = "Template"
+Private Const SHEET_TEMPLATE_DRAFT As String = "TemplateDraft"
 Private Const SHEET_SETTINGS As String = "Settings"
 Private Const SHEET_OUTPUT As String = "Output"
 
@@ -35,6 +36,10 @@ Private Const SETTINGS_YEAR_CELL As String = "B2"
 Private Const SETTINGS_MONTH_CELL As String = "B3"
 
 Private Const BLOCK_GAP_ROWS As Long = 2
+
+Private Const DRAFT_TIME_START_HOUR As Long = 9
+Private Const DRAFT_TIME_END_HOUR As Long = 19
+Private Const DRAFT_HATCH_START_HOUR As Long = 18
 
 Public Sub GenerateAppointmentBook_Phase1()
 
@@ -260,6 +265,275 @@ Private Function GetSheetOrError(ByVal sheetName As String) As Worksheet
 
 NotFound:
     Err.Raise vbObjectError + 100, , "Sheet not found: " & sheetName
+
+End Function
+
+Public Sub CreateTemplateDraft()
+
+    On Error GoTo ErrorHandler
+
+    Dim wsT As Worksheet
+    Set wsT = GetSheetOrError(SHEET_TEMPLATE)
+
+    Dim wsExisting As Worksheet
+    Set wsExisting = Nothing
+
+    If SheetExists(SHEET_TEMPLATE_DRAFT) Then
+        If MsgBox("TemplateDraft already exists. Delete and recreate it?", vbQuestion + vbYesNo) <> vbYes Then
+            Exit Sub
+        End If
+
+        Set wsExisting = ThisWorkbook.Worksheets(SHEET_TEMPLATE_DRAFT)
+    End If
+
+    Dim previousScreenUpdating As Boolean
+    Dim previousDisplayAlerts As Boolean
+    Dim previousEnableEvents As Boolean
+    Dim appStateCaptured As Boolean
+
+    previousScreenUpdating = Application.ScreenUpdating
+    previousDisplayAlerts = Application.DisplayAlerts
+    previousEnableEvents = Application.EnableEvents
+    appStateCaptured = True
+
+    Application.ScreenUpdating = False
+    Application.DisplayAlerts = False
+    Application.EnableEvents = False
+
+    If Not wsExisting Is Nothing Then
+        wsExisting.Delete
+    End If
+
+    wsT.Copy After:=wsT
+
+    Dim wsD As Worksheet
+    Set wsD = ActiveSheet
+    wsD.Name = SHEET_TEMPLATE_DRAFT
+
+    ApplyTemplateDraftTimeAxis wsD
+
+    wsD.Activate
+
+    Application.EnableEvents = previousEnableEvents
+    Application.DisplayAlerts = previousDisplayAlerts
+    Application.ScreenUpdating = previousScreenUpdating
+
+    MsgBox "TemplateDraft created.", vbInformation
+    Exit Sub
+
+ErrorHandler:
+    If appStateCaptured Then
+        Application.EnableEvents = previousEnableEvents
+        Application.DisplayAlerts = previousDisplayAlerts
+        Application.ScreenUpdating = previousScreenUpdating
+    Else
+        Application.EnableEvents = True
+        Application.DisplayAlerts = True
+        Application.ScreenUpdating = True
+    End If
+
+    MsgBox "Error while creating TemplateDraft." & vbCrLf & _
+           "Number: " & Err.Number & vbCrLf & _
+           "Description: " & Err.Description, vbCritical
+
+End Sub
+
+Private Sub ApplyTemplateDraftTimeAxis(ByVal ws As Worksheet)
+
+    Dim templateRange As Range
+    Set templateRange = GetTemplateRange(ws)
+
+    If templateRange Is Nothing Then
+        Exit Sub
+    End If
+
+    Dim hourCol As Long
+    Dim minuteCol As Long
+
+    If Not FindDraftTimeColumns(ws, templateRange, hourCol, minuteCol) Then
+        Err.Raise vbObjectError + 200, , "Time columns were not found in Template."
+    End If
+
+    Dim lastCol As Long
+    lastCol = templateRange.Column + templateRange.Columns.Count - 1
+
+    Dim r As Long
+    Dim hourValue As Variant
+    Dim minuteValue As Variant
+    Dim slotTime As Date
+    Dim slots As Collection
+
+    Set slots = New Collection
+
+    For r = templateRange.Row To templateRange.Row + templateRange.Rows.Count - 1
+
+        hourValue = DraftCellNumber(ws.Cells(r, hourCol))
+        minuteValue = DraftCellNumber(ws.Cells(r, minuteCol))
+
+        If IsDraftTimeSlot(hourValue, minuteValue) Then
+            slotTime = TimeSerial(CLng(hourValue), CLng(minuteValue), 0)
+
+            If slotTime >= TimeSerial(DRAFT_TIME_START_HOUR, 0, 0) And _
+               slotTime <= TimeSerial(DRAFT_TIME_END_HOUR, 0, 0) Then
+                slots.Add Array(r, CLng(hourValue), CLng(minuteValue))
+            End If
+        End If
+
+    Next r
+
+    Dim slot As Variant
+
+    For Each slot In slots
+
+        r = CLng(slot(0))
+        slotTime = TimeSerial(CLng(slot(1)), CLng(slot(2)), 0)
+
+        If ws.Cells(r, hourCol).MergeCells Then
+            ws.Cells(r, hourCol).MergeArea.UnMerge
+        End If
+
+        If ws.Cells(r, minuteCol).MergeCells Then
+            ws.Cells(r, minuteCol).MergeArea.UnMerge
+        End If
+
+        With ws.Cells(r, hourCol)
+            .Value = Format(slotTime, "h:mm")
+            .NumberFormat = "@"
+            .HorizontalAlignment = xlCenter
+            .VerticalAlignment = xlCenter
+            .Font.Bold = (CLng(slot(2)) = 0)
+        End With
+
+        ws.Cells(r, minuteCol).ClearContents
+
+        FormatTemplateDraftTimeRow ws.Range(ws.Cells(r, templateRange.Column), ws.Cells(r, lastCol)), _
+                                   CLng(slot(2)), _
+                                   slotTime >= TimeSerial(DRAFT_HATCH_START_HOUR, 0, 0)
+
+    Next slot
+
+    ws.Columns(hourCol).AutoFit
+
+End Sub
+
+Private Function FindDraftTimeColumns(ByVal ws As Worksheet, ByVal templateRange As Range, ByRef hourCol As Long, ByRef minuteCol As Long) As Boolean
+
+    Dim bestScore As Long
+    Dim bestHourCol As Long
+    Dim bestMinuteCol As Long
+    Dim c As Long
+    Dim r As Long
+    Dim score As Long
+    Dim hourValue As Variant
+    Dim minuteValue As Variant
+
+    For c = templateRange.Column To templateRange.Column + templateRange.Columns.Count - 2
+        score = 0
+
+        For r = templateRange.Row To templateRange.Row + templateRange.Rows.Count - 1
+            hourValue = DraftCellNumber(ws.Cells(r, c))
+            minuteValue = DraftCellNumber(ws.Cells(r, c + 1))
+
+            If IsDraftTimeSlot(hourValue, minuteValue) Then
+                score = score + 1
+            End If
+        Next r
+
+        If score > bestScore Then
+            bestScore = score
+            bestHourCol = c
+            bestMinuteCol = c + 1
+        End If
+    Next c
+
+    If bestScore >= 4 Then
+        hourCol = bestHourCol
+        minuteCol = bestMinuteCol
+        FindDraftTimeColumns = True
+    Else
+        FindDraftTimeColumns = False
+    End If
+
+End Function
+
+Private Function DraftCellNumber(ByVal cell As Range) As Variant
+
+    Dim sourceCell As Range
+
+    If cell.MergeCells Then
+        Set sourceCell = cell.MergeArea.Cells(1, 1)
+    Else
+        Set sourceCell = cell
+    End If
+
+    Dim txt As String
+    txt = Trim$(CStr(sourceCell.Value))
+
+    If Len(txt) = 0 Then
+        DraftCellNumber = Empty
+    ElseIf IsNumeric(txt) Then
+        DraftCellNumber = CLng(Val(txt))
+    ElseIf IsDate(txt) Then
+        DraftCellNumber = Hour(CDate(txt))
+    Else
+        DraftCellNumber = Empty
+    End If
+
+End Function
+
+Private Function IsDraftTimeSlot(ByVal hourValue As Variant, ByVal minuteValue As Variant) As Boolean
+
+    If IsEmpty(hourValue) Or IsEmpty(minuteValue) Then
+        IsDraftTimeSlot = False
+        Exit Function
+    End If
+
+    If CLng(hourValue) < 0 Or CLng(hourValue) > 23 Then
+        IsDraftTimeSlot = False
+        Exit Function
+    End If
+
+    Select Case CLng(minuteValue)
+        Case 0, 15, 30, 45
+            IsDraftTimeSlot = True
+        Case Else
+            IsDraftTimeSlot = False
+    End Select
+
+End Function
+
+Private Sub FormatTemplateDraftTimeRow(ByVal rowRange As Range, ByVal minuteValue As Long, ByVal useHatch As Boolean)
+
+    With rowRange.Borders(xlEdgeTop)
+        If minuteValue = 0 Then
+            .LineStyle = xlContinuous
+            .Weight = xlMedium
+            .Color = RGB(89, 89, 89)
+        Else
+            .LineStyle = xlDot
+            .Weight = xlThin
+            .Color = RGB(191, 191, 191)
+        End If
+    End With
+
+    If useHatch Then
+        With rowRange.Interior
+            .Pattern = xlLightDown
+            .PatternColor = RGB(217, 217, 217)
+        End With
+    End If
+
+End Sub
+
+Private Function SheetExists(ByVal sheetName As String) As Boolean
+
+    Dim ws As Worksheet
+
+    On Error Resume Next
+    Set ws = ThisWorkbook.Worksheets(sheetName)
+    On Error GoTo 0
+
+    SheetExists = Not ws Is Nothing
 
 End Function
 
