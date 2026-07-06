@@ -3,7 +3,7 @@ Option Explicit
 '============================================================
 ' ClinicAppointment
 ' Module: AppointmentBook
-' Version: 2026.07.07-Phase4C-staff-work-pattern
+' Version: 2026.07.07-Phase4D-settings-dropdowns
 '
 ' Important:
 ' - One-day template range is fixed to Template!A1:J46.
@@ -15,6 +15,7 @@ Option Explicit
 ' - Staff headers can be overridden from Settings!B5:F5.
 ' - Template column H is intentionally treated as a spacer/narrow column.
 '   DH headers are written to I and J.
+' - Settings dropdowns can be created with SetupSettingsDropdowns.
 '============================================================
 
 Private Const SHEET_TEMPLATE As String = "Template"
@@ -26,6 +27,10 @@ Private Const SETTINGS_YEAR_CELL As String = "B2"
 Private Const SETTINGS_MONTH_CELL As String = "B3"
 Private Const SETTINGS_STAFF_FIRST_CELL As String = "B5"
 Private Const SETTINGS_WORK_PATTERN_FIRST_CELL As String = "B7"
+Private Const SETTINGS_STAFF_HEADER_RANGE As String = "B5:F5"
+Private Const SETTINGS_WORK_PATTERN_RANGE As String = "B7:F13"
+Private Const SETTINGS_WEEKDAY_LABEL_RANGE As String = "A7:A13"
+Private Const SETTINGS_STAFF_MASTER_RANGE As String = "H5:H24"
 
 Private Const TEMPLATE_ONE_DAY_RANGE As String = "A1:J46"
 Private Const BLOCK_GAP_ROWS As Long = 2
@@ -57,6 +62,130 @@ End Sub
 
 Public Sub GenerateAppointmentBook_Phase4()
     GenerateAppointmentBookCore "Phase 4"
+End Sub
+
+Public Sub SetupSettingsDropdowns()
+
+    On Error GoTo ErrorHandler
+
+    Dim wsS As Worksheet
+    Set wsS = GetSheetOrError(SHEET_SETTINGS)
+
+    Application.ScreenUpdating = False
+
+    ApplySettingsLabels wsS
+    InitializeStaffMasterFromCurrentHeaders wsS
+    ApplyStaffHeaderDropdowns wsS
+    ApplyWorkPatternDropdowns wsS
+
+    Application.ScreenUpdating = True
+
+    MsgBox "Settings dropdowns are ready." & vbCrLf & _
+           "Staff headers: Settings!B5:F5" & vbCrLf & _
+           "Work pattern: Settings!B7:F13", vbInformation
+    Exit Sub
+
+ErrorHandler:
+    Application.ScreenUpdating = True
+    MsgBox "Error while setting up Settings dropdowns." & vbCrLf & _
+           "Number: " & Err.Number & vbCrLf & _
+           "Description: " & Err.Description, vbCritical
+
+End Sub
+
+Private Sub ApplySettingsLabels(ByVal wsS As Worksheet)
+
+    wsS.Range("A7").Value = "月"
+    wsS.Range("A8").Value = "火"
+    wsS.Range("A9").Value = "水"
+    wsS.Range("A10").Value = "木"
+    wsS.Range("A11").Value = "金"
+    wsS.Range("A12").Value = "土"
+    wsS.Range("A13").Value = "日"
+
+    wsS.Range("H4").Value = "担当者マスター"
+
+End Sub
+
+Private Sub InitializeStaffMasterFromCurrentHeaders(ByVal wsS As Worksheet)
+
+    If WorksheetFunction.CountA(wsS.Range(SETTINGS_STAFF_MASTER_RANGE)) > 0 Then
+        Exit Sub
+    End If
+
+    Dim sourceCell As Range
+    Dim nextRow As Long
+    Dim candidate As String
+
+    nextRow = wsS.Range(SETTINGS_STAFF_MASTER_RANGE).Row
+
+    For Each sourceCell In wsS.Range(SETTINGS_STAFF_HEADER_RANGE).Cells
+        candidate = Trim$(CStr(sourceCell.Value))
+        If Len(candidate) > 0 Then
+            If Not ValueExistsInRange(wsS.Range(SETTINGS_STAFF_MASTER_RANGE), candidate) Then
+                wsS.Cells(nextRow, wsS.Range(SETTINGS_STAFF_MASTER_RANGE).Column).Value = candidate
+                nextRow = nextRow + 1
+            End If
+        End If
+    Next sourceCell
+
+End Sub
+
+Private Function ValueExistsInRange(ByVal targetRange As Range, ByVal valueText As String) As Boolean
+
+    Dim cell As Range
+
+    For Each cell In targetRange.Cells
+        If Trim$(CStr(cell.Value)) = valueText Then
+            ValueExistsInRange = True
+            Exit Function
+        End If
+    Next cell
+
+    ValueExistsInRange = False
+
+End Function
+
+Private Sub ApplyStaffHeaderDropdowns(ByVal wsS As Worksheet)
+
+    Dim staffMaster As Range
+    Set staffMaster = wsS.Range(SETTINGS_STAFF_MASTER_RANGE)
+
+    With wsS.Range(SETTINGS_STAFF_HEADER_RANGE).Validation
+        .Delete
+    End With
+
+    If WorksheetFunction.CountA(staffMaster) = 0 Then
+        Exit Sub
+    End If
+
+    With wsS.Range(SETTINGS_STAFF_HEADER_RANGE).Validation
+        .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Operator:=xlBetween, _
+             Formula1:="=" & staffMaster.Address(True, True, xlA1, True)
+        .IgnoreBlank = True
+        .InCellDropdown = True
+        .InputTitle = "担当者選択"
+        .InputMessage = "担当者マスターから選択してください。"
+        .ErrorTitle = "入力できません"
+        .ErrorMessage = "担当者マスターに登録されている名前から選択してください。"
+    End With
+
+End Sub
+
+Private Sub ApplyWorkPatternDropdowns(ByVal wsS As Worksheet)
+
+    With wsS.Range(SETTINGS_WORK_PATTERN_RANGE).Validation
+        .Delete
+        .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Operator:=xlBetween, _
+             Formula1:="出勤,休"
+        .IgnoreBlank = True
+        .InCellDropdown = True
+        .InputTitle = "勤務パターン"
+        .InputMessage = "通常は空欄または出勤。休みの場合は休を選択してください。"
+        .ErrorTitle = "入力できません"
+        .ErrorMessage = "出勤または休を選択してください。"
+    End With
+
 End Sub
 
 Private Sub GenerateAppointmentBookCore(ByVal phaseName As String)
@@ -313,7 +442,7 @@ End Sub
 
 Private Function HasWorkPatternSettings(ByVal wsS As Worksheet) As Boolean
 
-    HasWorkPatternSettings = (WorksheetFunction.CountA(wsS.Range("B7:F13")) > 0)
+    HasWorkPatternSettings = (WorksheetFunction.CountA(wsS.Range(SETTINGS_WORK_PATTERN_RANGE)) > 0)
 
 End Function
 
@@ -692,8 +821,10 @@ Public Sub CheckAppointmentBook_Phase1()
            "Settings!B3 = Month" & vbCrLf & _
            "Settings!B5:F5 = Staff headers" & vbCrLf & _
            "Settings!B7:F13 = Weekly staff work pattern" & vbCrLf & _
+           "Settings!H5:H24 = Staff master" & vbCrLf & _
            "Staff mapping: B5->B, C5->D, D5->F, E5->I, F5->J" & vbCrLf & vbCrLf & _
-           "Run macro: GenerateAppointmentBook_Phase4", vbInformation
+           "Run setup macro first: SetupSettingsDropdowns" & vbCrLf & _
+           "Run generation macro: GenerateAppointmentBook_Phase4", vbInformation
     Exit Sub
 
 ErrorHandler:
