@@ -3,7 +3,7 @@ Option Explicit
 '============================================================
 ' ClinicAppointment
 ' Module: AppointmentBook
-' Version: 2026.07.07-Phase4AB-staff-headers-IJ-DH
+' Version: 2026.07.07-Phase4C-staff-work-pattern
 '
 ' Important:
 ' - One-day template range is fixed to Template!A1:J46.
@@ -25,6 +25,7 @@ Private Const SHEET_OUTPUT As String = "Output"
 Private Const SETTINGS_YEAR_CELL As String = "B2"
 Private Const SETTINGS_MONTH_CELL As String = "B3"
 Private Const SETTINGS_STAFF_FIRST_CELL As String = "B5"
+Private Const SETTINGS_WORK_PATTERN_FIRST_CELL As String = "B7"
 
 Private Const TEMPLATE_ONE_DAY_RANGE As String = "A1:J46"
 Private Const BLOCK_GAP_ROWS As Long = 2
@@ -218,6 +219,7 @@ Private Sub ApplyOperationalInfo(ByVal wsO As Worksheet, ByVal wsS As Worksheet,
 
     ReplaceTemplateDateIfPossible wsO, templateRange, pasteRow, currentDate
     ReplaceStaffHeadersIfConfigured wsO, wsS, templateRange, pasteRow
+    ApplyStaffWorkPatternIfConfigured wsO, wsS, templateRange, pasteRow, currentDate
     ApplyClinicHoursInBlock wsO, templateRange, pasteRow, currentDate
 
 End Sub
@@ -260,11 +262,7 @@ Private Sub ReplaceStaffHeadersIfConfigured(ByVal wsO As Worksheet, ByVal wsS As
     End If
 
     Dim targetCols(1 To STAFF_SLOT_COUNT) As Long
-    targetCols(1) = STAFF_COL_1
-    targetCols(2) = STAFF_COL_2
-    targetCols(3) = STAFF_COL_3
-    targetCols(4) = STAFF_COL_4
-    targetCols(5) = STAFF_COL_5
+    GetStaffTargetColumns targetCols
 
     Dim headerRow As Long
     headerRow = pasteRow + HEADER_ROW_IN_TEMPLATE - 1
@@ -280,6 +278,104 @@ Private Sub ReplaceStaffHeadersIfConfigured(ByVal wsO As Worksheet, ByVal wsS As
             targetCell.Value = staffNames(i)
         End If
     Next i
+
+End Sub
+
+Private Sub ApplyStaffWorkPatternIfConfigured(ByVal wsO As Worksheet, ByVal wsS As Worksheet, ByVal templateRange As Range, ByVal pasteRow As Long, ByVal currentDate As Date)
+
+    ' Optional weekly work pattern:
+    ' Settings!B7:F13 corresponds to Monday-Sunday x staff slots.
+    ' Blank or work-like values mean working.
+    ' Off-like values such as 休, 休み, off, x, 0 mean unavailable.
+
+    If Not HasWorkPatternSettings(wsS) Then
+        Exit Sub
+    End If
+
+    Dim weekdayIndexMondayFirst As Long
+    weekdayIndexMondayFirst = Weekday(currentDate, vbMonday) ' Monday=1 ... Sunday=7
+
+    Dim targetCols(1 To STAFF_SLOT_COUNT) As Long
+    GetStaffTargetColumns targetCols
+
+    Dim i As Long
+    Dim statusValue As String
+
+    For i = 1 To STAFF_SLOT_COUNT
+        statusValue = Trim$(CStr(wsS.Range(SETTINGS_WORK_PATTERN_FIRST_CELL).Offset(weekdayIndexMondayFirst - 1, i - 1).Value))
+        If IsStaffOffValue(statusValue) Then
+            ShadeStaffSlot wsO, pasteRow, templateRange, targetCols(i)
+            MarkStaffHeaderOff wsO, pasteRow, targetCols(i)
+        End If
+    Next i
+
+End Sub
+
+Private Function HasWorkPatternSettings(ByVal wsS As Worksheet) As Boolean
+
+    HasWorkPatternSettings = (WorksheetFunction.CountA(wsS.Range("B7:F13")) > 0)
+
+End Function
+
+Private Function IsStaffOffValue(ByVal valueText As String) As Boolean
+
+    Dim normalized As String
+    normalized = LCase$(Trim$(valueText))
+
+    IsStaffOffValue = (normalized = "休" Or _
+                       normalized = "休み" Or _
+                       normalized = "休診" Or _
+                       normalized = "off" Or _
+                       normalized = "x" Or _
+                       normalized = "×" Or _
+                       normalized = "0" Or _
+                       normalized = "-" Or _
+                       normalized = "欠")
+
+End Function
+
+Private Sub ShadeStaffSlot(ByVal ws As Worksheet, ByVal pasteRow As Long, ByVal templateRange As Range, ByVal targetCol As Long)
+
+    Dim firstCol As Long
+    Dim lastCol As Long
+    Dim headerCell As Range
+
+    Set headerCell = ws.Cells(pasteRow + HEADER_ROW_IN_TEMPLATE - 1, targetCol)
+
+    If headerCell.MergeCells Then
+        firstCol = headerCell.MergeArea.Column
+        lastCol = headerCell.MergeArea.Column + headerCell.MergeArea.Columns.Count - 1
+    Else
+        firstCol = targetCol
+        lastCol = targetCol
+    End If
+
+    ShadeRows ws, pasteRow + FIRST_TIME_ROW - 1, pasteRow + LAST_TIME_ROW - 1, firstCol, lastCol
+
+End Sub
+
+Private Sub MarkStaffHeaderOff(ByVal ws As Worksheet, ByVal pasteRow As Long, ByVal targetCol As Long)
+
+    Dim headerCell As Range
+    Set headerCell = ws.Cells(pasteRow + HEADER_ROW_IN_TEMPLATE - 1, targetCol)
+
+    If headerCell.MergeCells Then
+        Set headerCell = headerCell.MergeArea.Cells(1, 1)
+    End If
+
+    If InStr(CStr(headerCell.Value), "休") = 0 Then
+        headerCell.Value = CStr(headerCell.Value) & " 休"
+    End If
+
+End Sub
+
+Private Sub GetStaffTargetColumns(ByRef targetCols() As Long)
+
+    targetCols(1) = STAFF_COL_1
+    targetCols(2) = STAFF_COL_2
+    targetCols(3) = STAFF_COL_3
+    targetCols(4) = STAFF_COL_4
+    targetCols(5) = STAFF_COL_5
 
 End Sub
 
@@ -595,6 +691,7 @@ Public Sub CheckAppointmentBook_Phase1()
            "Settings!B2 = Year" & vbCrLf & _
            "Settings!B3 = Month" & vbCrLf & _
            "Settings!B5:F5 = Staff headers" & vbCrLf & _
+           "Settings!B7:F13 = Weekly staff work pattern" & vbCrLf & _
            "Staff mapping: B5->B, C5->D, D5->F, E5->I, F5->J" & vbCrLf & vbCrLf & _
            "Run macro: GenerateAppointmentBook_Phase4", vbInformation
     Exit Sub
