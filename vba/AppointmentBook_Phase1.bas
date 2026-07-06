@@ -341,6 +341,199 @@ ErrorHandler:
 
 End Sub
 
+Public Sub GenerateAppointmentBook_Phase2()
+
+    On Error GoTo ErrorHandler
+
+    Dim wsT As Worksheet
+    Dim wsS As Worksheet
+    Dim wsO As Worksheet
+
+    Set wsT = GetSheetOrError(SHEET_TEMPLATE)
+    Set wsS = GetSheetOrError(SHEET_SETTINGS)
+    Set wsO = GetSheetOrError(SHEET_OUTPUT)
+
+    Dim targetYear As Long
+    Dim targetMonth As Long
+
+    targetYear = CLng(Val(wsS.Range(SETTINGS_YEAR_CELL).Value))
+    targetMonth = CLng(Val(wsS.Range(SETTINGS_MONTH_CELL).Value))
+
+    If targetYear < 2000 Or targetYear > 2100 Or targetMonth < 1 Or targetMonth > 12 Then
+        MsgBox "Enter year in Settings!B2 and month in Settings!B3." & vbCrLf & _
+               "Example: B2=2027, B3=1", vbExclamation
+        Exit Sub
+    End If
+
+    Dim templateRange As Range
+    Set templateRange = GetTemplateRange(wsT)
+
+    If templateRange Is Nothing Then
+        MsgBox "Template sheet does not contain a one-day design.", vbExclamation
+        Exit Sub
+    End If
+
+    Dim previousScreenUpdating As Boolean
+    Dim previousDisplayAlerts As Boolean
+    Dim previousEnableEvents As Boolean
+    Dim appStateCaptured As Boolean
+
+    previousScreenUpdating = Application.ScreenUpdating
+    previousDisplayAlerts = Application.DisplayAlerts
+    previousEnableEvents = Application.EnableEvents
+    appStateCaptured = True
+
+    Application.ScreenUpdating = False
+    Application.DisplayAlerts = False
+    Application.EnableEvents = False
+
+    ClearOutput wsO
+    CopyTemplateColumnWidths wsT, wsO, templateRange
+
+    Dim daysInMonth As Long
+    daysInMonth = Day(DateSerial(targetYear, targetMonth + 1, 0))
+
+    Dim blockHeight As Long
+    blockHeight = templateRange.Rows.Count
+
+    Dim pasteRow As Long
+    Dim d As Long
+    Dim currentDate As Date
+
+    pasteRow = 1
+
+    For d = 1 To daysInMonth
+
+        currentDate = DateSerial(targetYear, targetMonth, d)
+
+        CopyTemplateBlock wsT, wsO, templateRange, pasteRow
+        ReplaceTemplateDateIfPossible wsO, templateRange, pasteRow, currentDate
+
+        pasteRow = pasteRow + blockHeight + BLOCK_GAP_ROWS
+
+    Next d
+
+    CopyTemplatePrintSettings wsT, wsO, templateRange, pasteRow - BLOCK_GAP_ROWS - 1
+
+    wsO.Activate
+
+    Application.EnableEvents = previousEnableEvents
+    Application.DisplayAlerts = previousDisplayAlerts
+    Application.ScreenUpdating = previousScreenUpdating
+
+    MsgBox "Phase 2 complete: Template copied for " & targetYear & "/" & targetMonth & ".", vbInformation
+    Exit Sub
+
+ErrorHandler:
+    If appStateCaptured Then
+        Application.EnableEvents = previousEnableEvents
+        Application.DisplayAlerts = previousDisplayAlerts
+        Application.ScreenUpdating = previousScreenUpdating
+    Else
+        Application.EnableEvents = True
+        Application.DisplayAlerts = True
+        Application.ScreenUpdating = True
+    End If
+
+    MsgBox "Error occurred in Phase 2." & vbCrLf & _
+           "Number: " & Err.Number & vbCrLf & _
+           "Description: " & Err.Description, vbCritical
+
+End Sub
+
+Private Sub ReplaceTemplateDateIfPossible(ByVal wsO As Worksheet, ByVal templateRange As Range, ByVal pasteRow As Long, ByVal currentDate As Date)
+
+    Dim targetCell As Range
+    Set targetCell = FindTemplateDateCell(wsO, templateRange, pasteRow)
+
+    If targetCell Is Nothing Then
+        Exit Sub
+    End If
+
+    If targetCell.MergeCells Then
+        Set targetCell = targetCell.MergeArea.Cells(1, 1)
+    End If
+
+    targetCell.Value = currentDate
+    targetCell.NumberFormatLocal = "yyyy/m/d (aaa)"
+    wsO.Columns(targetCell.Column).ColumnWidth = Application.WorksheetFunction.Max(wsO.Columns(targetCell.Column).ColumnWidth, 14)
+
+End Sub
+
+Private Function FindTemplateDateCell(ByVal wsO As Worksheet, ByVal templateRange As Range, ByVal pasteRow As Long) As Range
+
+    Dim firstSearchRow As Long
+    Dim lastHeaderRow As Long
+
+    firstSearchRow = pasteRow
+    lastHeaderRow = Application.WorksheetFunction.Min(pasteRow + FIRST_TIME_ROW - 2, pasteRow + templateRange.Rows.Count - 1)
+
+    Set FindTemplateDateCell = FindDateCandidateInRows(wsO, templateRange, firstSearchRow, lastHeaderRow)
+
+    If FindTemplateDateCell Is Nothing Then
+        Set FindTemplateDateCell = FindDateCandidateInRows(wsO, templateRange, pasteRow, pasteRow + templateRange.Rows.Count - 1)
+    End If
+
+End Function
+
+Private Function FindDateCandidateInRows(ByVal wsO As Worksheet, ByVal templateRange As Range, ByVal firstRow As Long, ByVal lastRow As Long) As Range
+
+    Dim r As Long
+    Dim c As Long
+    Dim cell As Range
+
+    For r = firstRow To lastRow
+        For c = templateRange.Column To templateRange.Column + templateRange.Columns.Count - 1
+            If Not IsTemplateTimeAxisCell(r, c, firstRow) Then
+                Set cell = wsO.Cells(r, c)
+                If IsTemplateDateCandidate(cell) Then
+                    Set FindDateCandidateInRows = cell
+                    Exit Function
+                End If
+            End If
+        Next c
+    Next r
+
+    Set FindDateCandidateInRows = Nothing
+
+End Function
+
+Private Function IsTemplateTimeAxisCell(ByVal absoluteRow As Long, ByVal absoluteCol As Long, ByVal blockFirstRow As Long) As Boolean
+
+    IsTemplateTimeAxisCell = ((absoluteCol = NEW_TIME_COL Or absoluteCol = OLD_MINUTE_COL) And _
+                              absoluteRow >= blockFirstRow + FIRST_TIME_ROW - 1 And _
+                              absoluteRow <= blockFirstRow + LAST_TIME_ROW - 1)
+
+End Function
+
+Private Function IsTemplateDateCandidate(ByVal cell As Range) As Boolean
+
+    Dim targetCell As Range
+
+    If cell.MergeCells Then
+        Set targetCell = cell.MergeArea.Cells(1, 1)
+    Else
+        Set targetCell = cell
+    End If
+
+    If Len(Trim$(CStr(targetCell.Value))) = 0 Then
+        IsTemplateDateCandidate = False
+    ElseIf IsDate(targetCell.Value) Then
+        IsTemplateDateCandidate = True
+    Else
+        IsTemplateDateCandidate = ContainsDateMarker(CStr(targetCell.Value))
+    End If
+
+End Function
+
+Private Function ContainsDateMarker(ByVal valueText As String) As Boolean
+
+    ContainsDateMarker = (InStr(valueText, "/") > 0 Or _
+                          InStr(valueText, "-") > 0 Or _
+                          InStr(valueText, "20") > 0)
+
+End Function
+
 Private Sub ApplyTemplateDraftTimeAxis(ByVal ws As Worksheet)
 
     Dim templateRange As Range
