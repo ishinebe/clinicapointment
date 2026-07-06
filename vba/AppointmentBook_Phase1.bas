@@ -3,7 +3,7 @@ Option Explicit
 '============================================================
 ' ClinicAppointment
 ' Module: AppointmentBook
-' Version: 2026.07.07-Phase2-preserve-template-time-axis
+' Version: 2026.07.07-Phase3-time-label-based-shading
 '
 ' Important:
 ' - One-day template range is fixed to Template!A1:J46.
@@ -11,6 +11,7 @@ Option Explicit
 '   the copied area and create hundreds of printed pages.
 ' - Template is the finalized design master.
 ' - Time axis is already designed in Template, so this macro does not redraw it.
+' - Clinic-hour shading is based on the actual time labels copied from Template.
 '============================================================
 
 Private Const SHEET_TEMPLATE As String = "Template"
@@ -24,7 +25,6 @@ Private Const SETTINGS_MONTH_CELL As String = "B3"
 Private Const TEMPLATE_ONE_DAY_RANGE As String = "A1:J46"
 Private Const BLOCK_GAP_ROWS As Long = 2
 
-Private Const TIME_START_HOUR As Long = 9
 Private Const NEW_TIME_COL As Long = 1
 Private Const OLD_MINUTE_COL As Long = 8
 Private Const FIRST_TIME_ROW As Long = 7
@@ -324,16 +324,37 @@ Private Sub ApplyClinicHoursInBlock(ByVal wsO As Worksheet, ByVal templateRange 
     Dim r As Long
     Dim slotTime As Date
 
-    slotTime = TimeSerial(TIME_START_HOUR, 0, 0)
-
     For r = startRow To endRow
-        If slotTime >= closeTime Then
-            ShadeRows wsO, r, r, templateRange.Column, lastCol
+        If TryGetTimeFromCell(wsO.Cells(r, NEW_TIME_COL), slotTime) Then
+            If slotTime >= closeTime Then
+                ShadeRows wsO, r, r, templateRange.Column, lastCol
+            End If
         End If
-        slotTime = DateAdd("n", 15, slotTime)
     Next r
 
 End Sub
+
+Private Function TryGetTimeFromCell(ByVal cell As Range, ByRef parsedTime As Date) As Boolean
+
+    Dim valueText As String
+    valueText = Trim$(CStr(cell.Value))
+
+    If Len(valueText) = 0 Then
+        TryGetTimeFromCell = False
+        Exit Function
+    End If
+
+    If IsDate(cell.Value) Then
+        parsedTime = TimeValue(cell.Value)
+        TryGetTimeFromCell = True
+    ElseIf IsDate(valueText) Then
+        parsedTime = TimeValue(valueText)
+        TryGetTimeFromCell = True
+    Else
+        TryGetTimeFromCell = False
+    End If
+
+End Function
 
 Private Function IsClosedWeekday(ByVal weekdayValue As Long) As Boolean
 
