@@ -3,7 +3,7 @@ Option Explicit
 '============================================================
 ' ClinicAppointment
 ' Module: AppointmentBook
-' Version: 2026.07.07-Phase5A-monthly-close-override
+' Version: 2026.07.07-Phase5A-monthly-close-override-merged
 '
 ' Important:
 ' - One-day template range is fixed to Template!A1:J46.
@@ -17,7 +17,8 @@ Option Explicit
 '   DH headers are written to I and J.
 ' - Settings dropdowns can be created with SetupSettingsDropdowns.
 ' - In work-pattern cells, blank means working. Select only休 when needed.
-' - Settings!B16 can override the clinic close time for the whole generated month.
+' - Settings!B16:F16 visually represents a whole-month close-time override.
+'   The stored value is read from Settings!B16.
 '============================================================
 
 Private Const SHEET_TEMPLATE As String = "Template"
@@ -34,6 +35,7 @@ Private Const SETTINGS_WORK_PATTERN_RANGE As String = "B7:F13"
 Private Const SETTINGS_WEEKDAY_LABEL_RANGE As String = "A7:A13"
 Private Const SETTINGS_STAFF_MASTER_RANGE As String = "H5:H24"
 Private Const SETTINGS_MONTHLY_CLOSE_CELL As String = "B16"
+Private Const SETTINGS_MONTHLY_CLOSE_RANGE As String = "B16:F16"
 
 Private Const TEMPLATE_ONE_DAY_RANGE As String = "A1:J46"
 Private Const BLOCK_GAP_ROWS As Long = 2
@@ -91,7 +93,7 @@ Public Sub SetupSettingsDropdowns()
     MsgBox "Settings dropdowns are ready." & vbCrLf & _
            "Staff headers: Settings!B5:F5" & vbCrLf & _
            "Work pattern: Settings!B7:F13" & vbCrLf & _
-           "Monthly close override: Settings!B16" & vbCrLf & _
+           "Monthly close override: Settings!B16:F16" & vbCrLf & _
            "Blank = normal, select values only when needed.", vbInformation
     Exit Sub
 
@@ -114,7 +116,26 @@ Private Sub ApplySettingsLabels(ByVal wsS As Worksheet)
     wsS.Range("A13").Value = "日"
 
     wsS.Range("A16").Value = "当月共通終了時刻"
+    PrepareMonthlyCloseVisualRange wsS
+
     wsS.Range("H4").Value = "担当者マスター"
+
+End Sub
+
+Private Sub PrepareMonthlyCloseVisualRange(ByVal wsS As Worksheet)
+
+    Dim keepValue As Variant
+    keepValue = wsS.Range(SETTINGS_MONTHLY_CLOSE_CELL).Value
+
+    With wsS.Range(SETTINGS_MONTHLY_CLOSE_RANGE)
+        .UnMerge
+        .ClearContents
+        .Merge
+        .HorizontalAlignment = xlCenter
+        .VerticalAlignment = xlCenter
+    End With
+
+    wsS.Range(SETTINGS_MONTHLY_CLOSE_CELL).Value = keepValue
 
 End Sub
 
@@ -876,10 +897,10 @@ Public Sub CheckAppointmentBook_Phase1()
            "Settings!B3 = Month" & vbCrLf & _
            "Settings!B5:F5 = Staff headers" & vbCrLf & _
            "Settings!B7:F13 = Weekly staff work pattern" & vbCrLf & _
-           "Settings!B16 = Monthly common close time" & vbCrLf & _
+           "Settings!B16:F16 = Monthly common close time" & vbCrLf & _
            "Settings!H5:H24 = Staff master" & vbCrLf & _
            "Blank in B7:F13 means working; select 休 only when needed." & vbCrLf & _
-           "Blank in B16 means normal clinic hours." & vbCrLf & _
+           "Blank in B16:F16 means normal clinic hours." & vbCrLf & _
            "Staff mapping: B5->B, C5->D, D5->F, E5->I, F5->J" & vbCrLf & vbCrLf & _
            "Run setup macro first: SetupSettingsDropdowns" & vbCrLf & _
            "Run generation macro: GenerateAppointmentBook_Phase5", vbInformation
