@@ -3,7 +3,7 @@ Option Explicit
 '============================================================
 ' ClinicAppointment
 ' Module: AppointmentBook
-' Version: 2026.07.07-Phase4D-settings-dropdowns
+' Version: 2026.07.07-Phase4E-blank-is-working
 '
 ' Important:
 ' - One-day template range is fixed to Template!A1:J46.
@@ -16,6 +16,7 @@ Option Explicit
 ' - Template column H is intentionally treated as a spacer/narrow column.
 '   DH headers are written to I and J.
 ' - Settings dropdowns can be created with SetupSettingsDropdowns.
+' - In work-pattern cells, blank means working. Select only休 when needed.
 '============================================================
 
 Private Const SHEET_TEMPLATE As String = "Template"
@@ -82,7 +83,8 @@ Public Sub SetupSettingsDropdowns()
 
     MsgBox "Settings dropdowns are ready." & vbCrLf & _
            "Staff headers: Settings!B5:F5" & vbCrLf & _
-           "Work pattern: Settings!B7:F13", vbInformation
+           "Work pattern: Settings!B7:F13" & vbCrLf & _
+           "Blank = working, select 休 only when needed.", vbInformation
     Exit Sub
 
 ErrorHandler:
@@ -177,13 +179,13 @@ Private Sub ApplyWorkPatternDropdowns(ByVal wsS As Worksheet)
     With wsS.Range(SETTINGS_WORK_PATTERN_RANGE).Validation
         .Delete
         .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Operator:=xlBetween, _
-             Formula1:="出勤,休"
+             Formula1:="休"
         .IgnoreBlank = True
         .InCellDropdown = True
         .InputTitle = "勤務パターン"
-        .InputMessage = "通常は空欄または出勤。休みの場合は休を選択してください。"
+        .InputMessage = "通常は空欄のままです。休みの場合だけ休を選択してください。"
         .ErrorTitle = "入力できません"
-        .ErrorMessage = "出勤または休を選択してください。"
+        .ErrorMessage = "休を選択するか、空欄のままにしてください。"
     End With
 
 End Sub
@@ -414,8 +416,8 @@ Private Sub ApplyStaffWorkPatternIfConfigured(ByVal wsO As Worksheet, ByVal wsS 
 
     ' Optional weekly work pattern:
     ' Settings!B7:F13 corresponds to Monday-Sunday x staff slots.
-    ' Blank or work-like values mean working.
-    ' Off-like values such as 休, 休み, off, x, 0 mean unavailable.
+    ' Blank means working.
+    ' Select only 休 when the staff member is unavailable for that weekday.
 
     If Not HasWorkPatternSettings(wsS) Then
         Exit Sub
@@ -822,6 +824,7 @@ Public Sub CheckAppointmentBook_Phase1()
            "Settings!B5:F5 = Staff headers" & vbCrLf & _
            "Settings!B7:F13 = Weekly staff work pattern" & vbCrLf & _
            "Settings!H5:H24 = Staff master" & vbCrLf & _
+           "Blank in B7:F13 means working; select 休 only when needed." & vbCrLf & _
            "Staff mapping: B5->B, C5->D, D5->F, E5->I, F5->J" & vbCrLf & vbCrLf & _
            "Run setup macro first: SetupSettingsDropdowns" & vbCrLf & _
            "Run generation macro: GenerateAppointmentBook_Phase4", vbInformation
