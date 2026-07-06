@@ -3,27 +3,12 @@ Option Explicit
 '============================================================
 ' ClinicAppointment
 ' Module: AppointmentBook
-' Version: 2026.07.07-Phase1
+' Version: 2026.07.07-Phase1-A1J46-hotfix
 '
-' Phase 1:
-' - Copy Template sheet design master to Output sheet.
-' - Preserve current appointment book layout as much as possible.
-'
-' Run:
-' Alt + F8 -> GenerateAppointmentBook_Phase1
-'
-' Required sheets:
-' - Template
-' - Settings
-' - Output
-'
-' Settings:
-' - B2: Year
-' - B3: Month
-'
-' Note:
-' Phase 1 focuses on copying Template for one month.
-' Time rendering, staff replacement, shading, and exceptions are later phases.
+' Important:
+' - One-day template range is fixed to Template!A1:J46.
+' - Do not use UsedRange for Template because stray formatting can expand
+'   the copied area and create hundreds of printed pages.
 '============================================================
 
 Private Const SHEET_TEMPLATE As String = "Template"
@@ -34,6 +19,7 @@ Private Const SHEET_OUTPUT As String = "Output"
 Private Const SETTINGS_YEAR_CELL As String = "B2"
 Private Const SETTINGS_MONTH_CELL As String = "B3"
 
+Private Const TEMPLATE_ONE_DAY_RANGE As String = "A1:J46"
 Private Const BLOCK_GAP_ROWS As Long = 2
 
 Private Const DRAFT_TIME_START_HOUR As Long = 9
@@ -42,9 +28,17 @@ Private Const DRAFT_HATCH_START_HOUR As Long = 18
 Private Const NEW_TIME_COL As Long = 1
 Private Const OLD_MINUTE_COL As Long = 8
 Private Const FIRST_TIME_ROW As Long = 7
-Private Const LAST_TIME_ROW As Long = 78
+Private Const LAST_TIME_ROW As Long = 46
 
 Public Sub GenerateAppointmentBook_Phase1()
+    GenerateAppointmentBookCore "Phase 1"
+End Sub
+
+Public Sub GenerateAppointmentBook_Phase2()
+    GenerateAppointmentBookCore "Phase 2"
+End Sub
+
+Private Sub GenerateAppointmentBookCore(ByVal phaseName As String)
 
     On Error GoTo ErrorHandler
 
@@ -76,6 +70,22 @@ Public Sub GenerateAppointmentBook_Phase1()
         Exit Sub
     End If
 
+    If templateRange.Rows.Count <> 46 Or templateRange.Columns.Count <> 10 Then
+        MsgBox "Template range is unexpected: " & templateRange.Address(False, False) & vbCrLf & _
+               "Expected: " & TEMPLATE_ONE_DAY_RANGE, vbCritical
+        Exit Sub
+    End If
+
+    Dim previousScreenUpdating As Boolean
+    Dim previousDisplayAlerts As Boolean
+    Dim previousEnableEvents As Boolean
+    Dim appStateCaptured As Boolean
+
+    previousScreenUpdating = Application.ScreenUpdating
+    previousDisplayAlerts = Application.DisplayAlerts
+    previousEnableEvents = Application.EnableEvents
+    appStateCaptured = True
+
     Application.ScreenUpdating = False
     Application.DisplayAlerts = False
     Application.EnableEvents = False
@@ -96,33 +106,38 @@ Public Sub GenerateAppointmentBook_Phase1()
     pasteRow = 1
 
     For d = 1 To daysInMonth
-
         currentDate = DateSerial(targetYear, targetMonth, d)
 
         CopyTemplateBlock wsT, wsO, templateRange, pasteRow
-        ReplaceDateIfPossible wsO, templateRange, pasteRow, currentDate
+        ReplaceTemplateDateIfPossible wsO, templateRange, pasteRow, currentDate
 
         pasteRow = pasteRow + blockHeight + BLOCK_GAP_ROWS
-
     Next d
 
     CopyTemplatePrintSettings wsT, wsO, templateRange, pasteRow - BLOCK_GAP_ROWS - 1
 
     wsO.Activate
 
-    Application.EnableEvents = True
-    Application.DisplayAlerts = True
-    Application.ScreenUpdating = True
+    Application.EnableEvents = previousEnableEvents
+    Application.DisplayAlerts = previousDisplayAlerts
+    Application.ScreenUpdating = previousScreenUpdating
 
-    MsgBox "Phase 1 complete: Template copied for " & targetYear & "/" & targetMonth & ".", vbInformation
+    MsgBox phaseName & " complete: Template!" & TEMPLATE_ONE_DAY_RANGE & _
+           " copied for " & targetYear & "/" & targetMonth & ".", vbInformation
     Exit Sub
 
 ErrorHandler:
-    Application.EnableEvents = True
-    Application.DisplayAlerts = True
-    Application.ScreenUpdating = True
+    If appStateCaptured Then
+        Application.EnableEvents = previousEnableEvents
+        Application.DisplayAlerts = previousDisplayAlerts
+        Application.ScreenUpdating = previousScreenUpdating
+    Else
+        Application.EnableEvents = True
+        Application.DisplayAlerts = True
+        Application.ScreenUpdating = True
+    End If
 
-    MsgBox "Error occurred." & vbCrLf & _
+    MsgBox "Error occurred in " & phaseName & "." & vbCrLf & _
            "Number: " & Err.Number & vbCrLf & _
            "Description: " & Err.Description, vbCritical
 
@@ -130,14 +145,9 @@ End Sub
 
 Private Function GetTemplateRange(ByVal ws As Worksheet) As Range
 
-    Dim ur As Range
-    Set ur = ws.UsedRange
-
-    If WorksheetFunction.CountA(ur) = 0 Then
-        Set GetTemplateRange = Nothing
-    Else
-        Set GetTemplateRange = ur
-    End If
+    ' A1:J46 is the confirmed one-day appointment-book block.
+    ' UsedRange is intentionally not used because stray formatting can expand it.
+    Set GetTemplateRange = ws.Range(TEMPLATE_ONE_DAY_RANGE)
 
 End Function
 
@@ -184,55 +194,97 @@ Private Sub CopyTemplateRowHeights(ByVal wsT As Worksheet, ByVal wsO As Workshee
 
 End Sub
 
-Private Sub ReplaceDateIfPossible(ByVal wsO As Worksheet, ByVal templateRange As Range, ByVal pasteRow As Long, ByVal currentDate As Date)
+Private Sub ReplaceTemplateDateIfPossible(ByVal wsO As Worksheet, ByVal templateRange As Range, ByVal pasteRow As Long, ByVal currentDate As Date)
 
     Dim targetCell As Range
-    Set targetCell = FindDateLikeCell(wsO, templateRange, pasteRow)
+    Set targetCell = FindTemplateDateCell(wsO, templateRange, pasteRow)
 
     If targetCell Is Nothing Then
-        ' If date cell is not found, do nothing in Phase 1.
-        ' Phase 2 will use anchors or fixed cell mapping.
         Exit Sub
     End If
 
-    targetCell.Value = Format(currentDate, "yyyy年m月d日") & "（" & GetJapaneseWeekday(currentDate) & "）"
+    If targetCell.MergeCells Then
+        Set targetCell = targetCell.MergeArea.Cells(1, 1)
+    End If
+
+    targetCell.Value = currentDate
+    targetCell.NumberFormatLocal = "yyyy/m/d (aaa)"
+    wsO.Columns(targetCell.Column).ColumnWidth = Application.WorksheetFunction.Max(wsO.Columns(targetCell.Column).ColumnWidth, 14)
 
 End Sub
 
-Private Function FindDateLikeCell(ByVal wsO As Worksheet, ByVal templateRange As Range, ByVal pasteRow As Long) As Range
+Private Function FindTemplateDateCell(ByVal wsO As Worksheet, ByVal templateRange As Range, ByVal pasteRow As Long) As Range
 
-    Dim r As Long
-    Dim c As Long
-    Dim txt As String
+    Dim firstSearchRow As Long
+    Dim lastHeaderRow As Long
 
-    For r = pasteRow To pasteRow + templateRange.Rows.Count - 1
-        For c = templateRange.Column To templateRange.Column + templateRange.Columns.Count - 1
+    firstSearchRow = pasteRow
+    lastHeaderRow = Application.WorksheetFunction.Min(pasteRow + FIRST_TIME_ROW - 2, pasteRow + templateRange.Rows.Count - 1)
 
-            txt = CStr(wsO.Cells(r, c).Value)
+    Set FindTemplateDateCell = FindDateCandidateInRows(wsO, templateRange, firstSearchRow, lastHeaderRow)
 
-            If InStr(txt, "年") > 0 And InStr(txt, "月") > 0 And InStr(txt, "日") > 0 Then
-                Set FindDateLikeCell = wsO.Cells(r, c)
-                Exit Function
-            End If
-
-        Next c
-    Next r
-
-    Set FindDateLikeCell = Nothing
+    If FindTemplateDateCell Is Nothing Then
+        Set FindTemplateDateCell = FindDateCandidateInRows(wsO, templateRange, pasteRow, pasteRow + templateRange.Rows.Count - 1)
+    End If
 
 End Function
 
-Private Function GetJapaneseWeekday(ByVal d As Date) As String
+Private Function FindDateCandidateInRows(ByVal wsO As Worksheet, ByVal templateRange As Range, ByVal firstRow As Long, ByVal lastRow As Long) As Range
 
-    Select Case Weekday(d, vbSunday)
-        Case 1: GetJapaneseWeekday = "日"
-        Case 2: GetJapaneseWeekday = "月"
-        Case 3: GetJapaneseWeekday = "火"
-        Case 4: GetJapaneseWeekday = "水"
-        Case 5: GetJapaneseWeekday = "木"
-        Case 6: GetJapaneseWeekday = "金"
-        Case 7: GetJapaneseWeekday = "土"
-    End Select
+    Dim r As Long
+    Dim c As Long
+    Dim cell As Range
+
+    For r = firstRow To lastRow
+        For c = templateRange.Column To templateRange.Column + templateRange.Columns.Count - 1
+            If Not IsTemplateTimeAxisCell(r, c, firstRow) Then
+                Set cell = wsO.Cells(r, c)
+                If IsTemplateDateCandidate(cell) Then
+                    Set FindDateCandidateInRows = cell
+                    Exit Function
+                End If
+            End If
+        Next c
+    Next r
+
+    Set FindDateCandidateInRows = Nothing
+
+End Function
+
+Private Function IsTemplateTimeAxisCell(ByVal absoluteRow As Long, ByVal absoluteCol As Long, ByVal blockFirstRow As Long) As Boolean
+
+    IsTemplateTimeAxisCell = ((absoluteCol = NEW_TIME_COL Or absoluteCol = OLD_MINUTE_COL) And _
+                              absoluteRow >= blockFirstRow + FIRST_TIME_ROW - 1 And _
+                              absoluteRow <= blockFirstRow + LAST_TIME_ROW - 1)
+
+End Function
+
+Private Function IsTemplateDateCandidate(ByVal cell As Range) As Boolean
+
+    Dim targetCell As Range
+
+    If cell.MergeCells Then
+        Set targetCell = cell.MergeArea.Cells(1, 1)
+    Else
+        Set targetCell = cell
+    End If
+
+    If Len(Trim$(CStr(targetCell.Value))) = 0 Then
+        IsTemplateDateCandidate = False
+    ElseIf IsDate(targetCell.Value) Then
+        IsTemplateDateCandidate = True
+    Else
+        IsTemplateDateCandidate = ContainsDateMarker(CStr(targetCell.Value))
+    End If
+
+End Function
+
+Private Function ContainsDateMarker(ByVal valueText As String) As Boolean
+
+    ContainsDateMarker = (InStr(valueText, "/") > 0 Or _
+                          InStr(valueText, "-") > 0 Or _
+                          InStr(valueText, "20") > 0 Or _
+                          (InStr(valueText, "年") > 0 And InStr(valueText, "月") > 0 And InStr(valueText, "日") > 0))
 
 End Function
 
@@ -340,199 +392,6 @@ ErrorHandler:
            "Description: " & Err.Description, vbCritical
 
 End Sub
-
-Public Sub GenerateAppointmentBook_Phase2()
-
-    On Error GoTo ErrorHandler
-
-    Dim wsT As Worksheet
-    Dim wsS As Worksheet
-    Dim wsO As Worksheet
-
-    Set wsT = GetSheetOrError(SHEET_TEMPLATE)
-    Set wsS = GetSheetOrError(SHEET_SETTINGS)
-    Set wsO = GetSheetOrError(SHEET_OUTPUT)
-
-    Dim targetYear As Long
-    Dim targetMonth As Long
-
-    targetYear = CLng(Val(wsS.Range(SETTINGS_YEAR_CELL).Value))
-    targetMonth = CLng(Val(wsS.Range(SETTINGS_MONTH_CELL).Value))
-
-    If targetYear < 2000 Or targetYear > 2100 Or targetMonth < 1 Or targetMonth > 12 Then
-        MsgBox "Enter year in Settings!B2 and month in Settings!B3." & vbCrLf & _
-               "Example: B2=2027, B3=1", vbExclamation
-        Exit Sub
-    End If
-
-    Dim templateRange As Range
-    Set templateRange = GetTemplateRange(wsT)
-
-    If templateRange Is Nothing Then
-        MsgBox "Template sheet does not contain a one-day design.", vbExclamation
-        Exit Sub
-    End If
-
-    Dim previousScreenUpdating As Boolean
-    Dim previousDisplayAlerts As Boolean
-    Dim previousEnableEvents As Boolean
-    Dim appStateCaptured As Boolean
-
-    previousScreenUpdating = Application.ScreenUpdating
-    previousDisplayAlerts = Application.DisplayAlerts
-    previousEnableEvents = Application.EnableEvents
-    appStateCaptured = True
-
-    Application.ScreenUpdating = False
-    Application.DisplayAlerts = False
-    Application.EnableEvents = False
-
-    ClearOutput wsO
-    CopyTemplateColumnWidths wsT, wsO, templateRange
-
-    Dim daysInMonth As Long
-    daysInMonth = Day(DateSerial(targetYear, targetMonth + 1, 0))
-
-    Dim blockHeight As Long
-    blockHeight = templateRange.Rows.Count
-
-    Dim pasteRow As Long
-    Dim d As Long
-    Dim currentDate As Date
-
-    pasteRow = 1
-
-    For d = 1 To daysInMonth
-
-        currentDate = DateSerial(targetYear, targetMonth, d)
-
-        CopyTemplateBlock wsT, wsO, templateRange, pasteRow
-        ReplaceTemplateDateIfPossible wsO, templateRange, pasteRow, currentDate
-
-        pasteRow = pasteRow + blockHeight + BLOCK_GAP_ROWS
-
-    Next d
-
-    CopyTemplatePrintSettings wsT, wsO, templateRange, pasteRow - BLOCK_GAP_ROWS - 1
-
-    wsO.Activate
-
-    Application.EnableEvents = previousEnableEvents
-    Application.DisplayAlerts = previousDisplayAlerts
-    Application.ScreenUpdating = previousScreenUpdating
-
-    MsgBox "Phase 2 complete: Template copied for " & targetYear & "/" & targetMonth & ".", vbInformation
-    Exit Sub
-
-ErrorHandler:
-    If appStateCaptured Then
-        Application.EnableEvents = previousEnableEvents
-        Application.DisplayAlerts = previousDisplayAlerts
-        Application.ScreenUpdating = previousScreenUpdating
-    Else
-        Application.EnableEvents = True
-        Application.DisplayAlerts = True
-        Application.ScreenUpdating = True
-    End If
-
-    MsgBox "Error occurred in Phase 2." & vbCrLf & _
-           "Number: " & Err.Number & vbCrLf & _
-           "Description: " & Err.Description, vbCritical
-
-End Sub
-
-Private Sub ReplaceTemplateDateIfPossible(ByVal wsO As Worksheet, ByVal templateRange As Range, ByVal pasteRow As Long, ByVal currentDate As Date)
-
-    Dim targetCell As Range
-    Set targetCell = FindTemplateDateCell(wsO, templateRange, pasteRow)
-
-    If targetCell Is Nothing Then
-        Exit Sub
-    End If
-
-    If targetCell.MergeCells Then
-        Set targetCell = targetCell.MergeArea.Cells(1, 1)
-    End If
-
-    targetCell.Value = currentDate
-    targetCell.NumberFormatLocal = "yyyy/m/d (aaa)"
-    wsO.Columns(targetCell.Column).ColumnWidth = Application.WorksheetFunction.Max(wsO.Columns(targetCell.Column).ColumnWidth, 14)
-
-End Sub
-
-Private Function FindTemplateDateCell(ByVal wsO As Worksheet, ByVal templateRange As Range, ByVal pasteRow As Long) As Range
-
-    Dim firstSearchRow As Long
-    Dim lastHeaderRow As Long
-
-    firstSearchRow = pasteRow
-    lastHeaderRow = Application.WorksheetFunction.Min(pasteRow + FIRST_TIME_ROW - 2, pasteRow + templateRange.Rows.Count - 1)
-
-    Set FindTemplateDateCell = FindDateCandidateInRows(wsO, templateRange, firstSearchRow, lastHeaderRow)
-
-    If FindTemplateDateCell Is Nothing Then
-        Set FindTemplateDateCell = FindDateCandidateInRows(wsO, templateRange, pasteRow, pasteRow + templateRange.Rows.Count - 1)
-    End If
-
-End Function
-
-Private Function FindDateCandidateInRows(ByVal wsO As Worksheet, ByVal templateRange As Range, ByVal firstRow As Long, ByVal lastRow As Long) As Range
-
-    Dim r As Long
-    Dim c As Long
-    Dim cell As Range
-
-    For r = firstRow To lastRow
-        For c = templateRange.Column To templateRange.Column + templateRange.Columns.Count - 1
-            If Not IsTemplateTimeAxisCell(r, c, firstRow) Then
-                Set cell = wsO.Cells(r, c)
-                If IsTemplateDateCandidate(cell) Then
-                    Set FindDateCandidateInRows = cell
-                    Exit Function
-                End If
-            End If
-        Next c
-    Next r
-
-    Set FindDateCandidateInRows = Nothing
-
-End Function
-
-Private Function IsTemplateTimeAxisCell(ByVal absoluteRow As Long, ByVal absoluteCol As Long, ByVal blockFirstRow As Long) As Boolean
-
-    IsTemplateTimeAxisCell = ((absoluteCol = NEW_TIME_COL Or absoluteCol = OLD_MINUTE_COL) And _
-                              absoluteRow >= blockFirstRow + FIRST_TIME_ROW - 1 And _
-                              absoluteRow <= blockFirstRow + LAST_TIME_ROW - 1)
-
-End Function
-
-Private Function IsTemplateDateCandidate(ByVal cell As Range) As Boolean
-
-    Dim targetCell As Range
-
-    If cell.MergeCells Then
-        Set targetCell = cell.MergeArea.Cells(1, 1)
-    Else
-        Set targetCell = cell
-    End If
-
-    If Len(Trim$(CStr(targetCell.Value))) = 0 Then
-        IsTemplateDateCandidate = False
-    ElseIf IsDate(targetCell.Value) Then
-        IsTemplateDateCandidate = True
-    Else
-        IsTemplateDateCandidate = ContainsDateMarker(CStr(targetCell.Value))
-    End If
-
-End Function
-
-Private Function ContainsDateMarker(ByVal valueText As String) As Boolean
-
-    ContainsDateMarker = (InStr(valueText, "/") > 0 Or _
-                          InStr(valueText, "-") > 0 Or _
-                          InStr(valueText, "20") > 0)
-
-End Function
 
 Private Sub ApplyTemplateDraftTimeAxis(ByVal ws As Worksheet)
 
@@ -692,12 +551,12 @@ Public Sub CheckAppointmentBook_Phase1()
         Exit Sub
     End If
 
-    MsgBox "Phase 1 settings check" & vbCrLf & vbCrLf & _
+    MsgBox "Appointment book settings check" & vbCrLf & vbCrLf & _
            "Template range: " & tr.Address(False, False) & vbCrLf & _
            "Required sheets: Template / Settings / Output" & vbCrLf & _
            "Settings!B2 = Year" & vbCrLf & _
            "Settings!B3 = Month" & vbCrLf & vbCrLf & _
-           "Run macro: GenerateAppointmentBook_Phase1", vbInformation
+           "Run macro: GenerateAppointmentBook_Phase2", vbInformation
     Exit Sub
 
 ErrorHandler:
