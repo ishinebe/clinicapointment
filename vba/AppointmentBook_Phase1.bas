@@ -356,6 +356,9 @@ Private Sub ApplyTemplateDraftTimeAxis(ByVal ws As Worksheet)
     Dim lastCol As Long
     lastCol = templateRange.Column + templateRange.Columns.Count - 1
 
+    Dim combinedTimeColumnWidth As Double
+    combinedTimeColumnWidth = ws.Columns(hourCol).ColumnWidth + ws.Columns(minuteCol).ColumnWidth
+
     Dim r As Long
     Dim hourValue As Variant
     Dim minuteValue As Variant
@@ -382,18 +385,12 @@ Private Sub ApplyTemplateDraftTimeAxis(ByVal ws As Worksheet)
 
     Dim slot As Variant
 
+    UnmergeTemplateDraftTimeColumns ws, templateRange, hourCol, minuteCol
+
     For Each slot In slots
 
         r = CLng(slot(0))
         slotTime = TimeSerial(CLng(slot(1)), CLng(slot(2)), 0)
-
-        If ws.Cells(r, hourCol).MergeCells Then
-            ws.Cells(r, hourCol).MergeArea.UnMerge
-        End If
-
-        If ws.Cells(r, minuteCol).MergeCells Then
-            ws.Cells(r, minuteCol).MergeArea.UnMerge
-        End If
 
         With ws.Cells(r, hourCol)
             .Value = Format(slotTime, "h:mm")
@@ -403,7 +400,11 @@ Private Sub ApplyTemplateDraftTimeAxis(ByVal ws As Worksheet)
             .Font.Bold = (CLng(slot(2)) = 0)
         End With
 
-        ws.Cells(r, minuteCol).ClearContents
+        With ws.Cells(r, minuteCol)
+            .ClearContents
+            .Borders.LineStyle = xlNone
+            .Interior.Pattern = xlNone
+        End With
 
         FormatTemplateDraftTimeRow ws.Range(ws.Cells(r, templateRange.Column), ws.Cells(r, lastCol)), _
                                    CLng(slot(2)), _
@@ -411,7 +412,38 @@ Private Sub ApplyTemplateDraftTimeAxis(ByVal ws As Worksheet)
 
     Next slot
 
-    ws.Columns(hourCol).AutoFit
+    SetTemplateDraftTimeColumnLayout ws, hourCol, minuteCol, combinedTimeColumnWidth
+
+End Sub
+
+Private Sub UnmergeTemplateDraftTimeColumns(ByVal ws As Worksheet, ByVal templateRange As Range, ByVal hourCol As Long, ByVal minuteCol As Long)
+
+    Dim r As Long
+
+    For r = templateRange.Row To templateRange.Row + templateRange.Rows.Count - 1
+        If ws.Cells(r, hourCol).MergeCells Then
+            ws.Cells(r, hourCol).MergeArea.UnMerge
+        End If
+
+        If ws.Cells(r, minuteCol).MergeCells Then
+            ws.Cells(r, minuteCol).MergeArea.UnMerge
+        End If
+    Next r
+
+End Sub
+
+Private Sub SetTemplateDraftTimeColumnLayout(ByVal ws As Worksheet, ByVal hourCol As Long, ByVal minuteCol As Long, ByVal combinedTimeColumnWidth As Double)
+
+    With ws.Columns(hourCol)
+        .Hidden = False
+        .ColumnWidth = Application.WorksheetFunction.Max(8, combinedTimeColumnWidth)
+    End With
+
+    With ws.Columns(minuteCol)
+        .ClearContents
+        .ColumnWidth = 0
+        .Hidden = True
+    End With
 
 End Sub
 
