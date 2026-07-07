@@ -422,14 +422,46 @@ Private Sub WriteTemporaryScheduleRow(ByVal rowNumber As Long, ByVal selectedDat
     Dim wsE As Worksheet
     Set wsE = ThisWorkbook.Worksheets(SHEET_EXCEPTIONS)
 
+    Dim targetText As String
+    Dim closeTimeText As String
+
+    targetText = cmbTempTarget.Value
+    closeTimeText = NormalizeCloseTimeForSave(cmbTempCloseTime.Value)
+
+    Select Case internalType
+        Case "休診"
+            targetText = "全体"
+            closeTimeText = ""
+        Case "時短診療"
+            targetText = "全体"
+        Case "休み"
+            closeTimeText = ""
+    End Select
+
     wsE.Cells(rowNumber, "A").Value = selectedDate
     wsE.Cells(rowNumber, "A").NumberFormatLocal = "yyyy/m/d (aaa)"
     wsE.Cells(rowNumber, "B").Value = internalType
-    wsE.Cells(rowNumber, "C").Value = cmbTempTarget.Value
-    wsE.Cells(rowNumber, "D").Value = cmbTempCloseTime.Value
+    wsE.Cells(rowNumber, "C").Value = targetText
+    wsE.Cells(rowNumber, "D").NumberFormatLocal = "@"
+    wsE.Cells(rowNumber, "D").Value = closeTimeText
     wsE.Cells(rowNumber, "E").Value = txtTempMemo.Value
 
 End Sub
+
+Private Function NormalizeCloseTimeForSave(ByVal valueText As String) As String
+
+    Dim normalized As String
+    normalized = Trim$(valueText)
+
+    If Len(normalized) = 0 Then
+        NormalizeCloseTimeForSave = ""
+    ElseIf IsDate(normalized) Then
+        NormalizeCloseTimeForSave = Format$(TimeValue(normalized), "h:mm")
+    Else
+        NormalizeCloseTimeForSave = normalized
+    End If
+
+End Function
 
 Private Function NextInputRow(ByVal wsE As Worksheet) As Long
 

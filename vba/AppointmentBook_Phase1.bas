@@ -968,7 +968,7 @@ Private Function TryGetExceptionTargetColumn(ByVal targetText As String, ByRef t
         Case "Dr2"
             targetCol = STAFF_COL_2
             TryGetExceptionTargetColumn = True
-        Case "予備"
+        Case "予備", "予備枠"
             targetCol = STAFF_COL_3
             TryGetExceptionTargetColumn = True
         Case "DH1"
@@ -980,6 +980,12 @@ Private Function TryGetExceptionTargetColumn(ByVal targetText As String, ByRef t
         Case Else
             TryGetExceptionTargetColumn = False
     End Select
+
+End Function
+
+Private Function IsWholeClinicExceptionTarget(ByVal targetText As String) As Boolean
+
+    IsWholeClinicExceptionTarget = (Trim$(targetText) = "全体")
 
 End Function
 
@@ -1011,14 +1017,14 @@ Private Sub ApplyExceptions(ByVal wsO As Worksheet, ByVal templateRange As Range
 
                 Select Case exceptionType
                     Case "休診"
-                        If targetText = "" Or targetText = "全体" Then
+                        If targetText = "" Or IsWholeClinicExceptionTarget(targetText) Then
                             ShadeRows wsO, pasteRow + FIRST_TIME_ROW - 1, pasteRow + LAST_TIME_ROW - 1, _
                                       templateRange.Column, templateRange.Column + templateRange.Columns.Count - 1
                             PutClosedLabel wsO, pasteRow, templateRange
                         End If
 
                     Case "時短診療"
-                        If targetText = "" Or targetText = "全体" Then
+                        If IsWholeClinicExceptionTarget(targetText) Then
                             If TryParseTimeText(Trim$(CStr(wsE.Cells(r, "D").Value)), closeTime) Then
                                 ShadeBlockFromTime wsO, templateRange, pasteRow, closeTime
                             End If
@@ -1208,8 +1214,25 @@ End Function
 
 Private Function TryParseTimeText(ByVal valueText As String, ByRef parsedTime As Date) As Boolean
 
-    If IsDate(valueText) Then
-        parsedTime = TimeValue(valueText)
+    Dim normalized As String
+    normalized = Trim$(valueText)
+    normalized = Replace(normalized, "まで", "")
+    normalized = Replace(normalized, "迄", "")
+    normalized = Trim$(normalized)
+
+    If Len(normalized) = 0 Then
+        TryParseTimeText = False
+    ElseIf IsNumeric(normalized) Then
+        Dim serialValue As Double
+        serialValue = CDbl(normalized)
+        If serialValue > 0 And serialValue < 1 Then
+            parsedTime = TimeValue(CDate(serialValue))
+            TryParseTimeText = True
+        Else
+            TryParseTimeText = False
+        End If
+    ElseIf IsDate(normalized) Then
+        parsedTime = TimeValue(normalized)
         TryParseTimeText = True
     Else
         TryParseTimeText = False
