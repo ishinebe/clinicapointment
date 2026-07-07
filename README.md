@@ -41,6 +41,8 @@ UserForm化フェーズ。
 
 現在は、受付・歯科助手でも迷わず操作できるように、`frmAppointmentSettings` を月次アポ帳作成フォームとして追加しています。UserFormは `Settings` シートを置き換えるものではなく、既存セルへ入力する補助画面です。既存ロジックとの互換性維持のため、内部参照セルである `B2`、`B3`、`B5:F5`、`B7:F13`、`B16:F16`、`H5:H24` は変更しません。
 
+VBEへのインポート互換性を優先し、`frmAppointmentSettings.frm` はASCII英数字中心で管理しています。日本語UIは後続フェーズで文字コード方針を決めてから追加します。
+
 ## 通常の使用手順
 
 1. 初回は `SetupUserFriendlySettings` または `SetupSettingsDropdowns` を実行する。

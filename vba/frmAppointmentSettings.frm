@@ -1,6 +1,6 @@
 VERSION 5.00
 Begin VB.UserForm frmAppointmentSettings
-   Caption         =   "アポ帳作成"
+   Caption         =   "Appointment Settings"
    ClientHeight    =   7200
    ClientLeft      =   120
    ClientTop       =   465
@@ -50,30 +50,30 @@ Private Sub UserForm_Initialize()
     Exit Sub
 
 ErrorHandler:
-    MsgBox "アポ帳作成フォームの初期化中にエラーが発生しました。" & vbCrLf & _
+    MsgBox "Error while initializing appointment settings form." & vbCrLf & _
            Err.Description, vbCritical
 
 End Sub
 
 Private Sub BuildForm()
 
-    Me.Caption = "アポ帳作成"
+    Me.Caption = "Appointment Settings"
     Me.Width = 720
     Me.Height = 520
 
-    AddLabel "lblTitle", "月次アポ帳作成フォーム", 12, 10, 260, 20, True, 14
+    AddLabel "lblTitle", "Monthly Appointment Settings", 12, 10, 260, 20, True, 14
 
-    AddLabel "lblYearMonth", "作成年月", 12, 42, 80, 18, True, 11
-    AddLabel "lblYear", "年", 28, 68, 24, 18, True, 10
+    AddLabel "lblYearMonth", "Year / Month", 12, 42, 80, 18, True, 11
+    AddLabel "lblYear", "Year", 28, 68, 24, 18, True, 10
     Set cmbYear = AddCombo("cmbYear", 58, 64, 86, 20)
     AddYearItems cmbYear
 
-    AddLabel "lblMonth", "月", 166, 68, 24, 18, True, 10
+    AddLabel "lblMonth", "Month", 166, 68, 40, 18, True, 10
     Set cmbMonth = AddCombo("cmbMonth", 196, 64, 62, 20)
     AddMonthItems cmbMonth
 
-    AddLabel "lblStaff", "担当者", 12, 104, 80, 18, True, 11
-    AddLabel "lblStaffNote", "担当者マスターから選択します。予備枠は空欄または予備枠も選べます。", 88, 104, 430, 18, False, 9
+    AddLabel "lblStaff", "Staff", 12, 104, 80, 18, True, 11
+    AddLabel "lblStaffNote", "Choose staff from the master list. Reserve may be blank.", 88, 104, 430, 18, False, 9
     AddStaffLabels 32, 130
     Set cmbDr1 = AddCombo("cmbDr1", 82, 150, 88, 20)
     Set cmbDr2 = AddCombo("cmbDr2", 178, 150, 88, 20)
@@ -86,19 +86,19 @@ Private Sub BuildForm()
     Set staffCombos(4) = cmbDH1
     Set staffCombos(5) = cmbDH2
 
-    AddLabel "lblWork", "曜日別の休み・早上がり", 12, 190, 170, 18, True, 11
-    AddLabel "lblWorkNote", "空欄=通常、休=休み、午前のみ=午前勤務、xx:xxまで=早上がり", 184, 190, 430, 18, False, 9
+    AddLabel "lblWork", "Weekly work pattern", 12, 190, 170, 18, True, 11
+    AddLabel "lblWorkNote", "blank=normal, off=day off, 12:00=AM only, time=early leave", 184, 190, 430, 18, False, 9
     AddWorkPatternGrid 26, 218
 
-    AddLabel "lblMonthlyClose", "医院全体の当月終了時刻", 12, 388, 170, 18, True, 11
-    AddLabel "lblMonthlyCloseNote", "通常は空欄。その月だけ早く閉める場合に選択します。", 184, 388, 360, 18, False, 9
+    AddLabel "lblMonthlyClose", "Clinic monthly close", 12, 388, 170, 18, True, 11
+    AddLabel "lblMonthlyCloseNote", "Usually blank. Select only when the clinic closes early this month.", 184, 388, 360, 18, False, 9
     Set cmbMonthlyClose = AddCombo("cmbMonthlyClose", 184, 414, 92, 20)
     AddMonthlyCloseItems cmbMonthlyClose
 
-    Set btnSave = AddButton("btnSave", "設定を保存", 24, 458, 110, 28)
-    Set btnCreate = AddButton("btnCreate", "アポ帳を作成", 148, 458, 120, 28)
-    Set btnRefreshExceptionDates = AddButton("btnRefreshExceptionDates", "例外日付を更新", 282, 458, 130, 28)
-    Set btnClose = AddButton("btnClose", "閉じる", 426, 458, 90, 28)
+    Set btnSave = AddButton("btnSave", "Save", 24, 458, 110, 28)
+    Set btnCreate = AddButton("btnCreate", "Create Book", 148, 458, 120, 28)
+    Set btnRefreshExceptionDates = AddButton("btnRefreshExceptionDates", "Refresh Dates", 282, 458, 130, 28)
+    Set btnClose = AddButton("btnClose", "Close", 426, 458, 90, 28)
 
 End Sub
 
@@ -106,7 +106,7 @@ Private Sub AddStaffLabels(ByVal leftStart As Double, ByVal topPos As Double)
 
     AddLabel "lblDr1", "Dr1", leftStart + 50, topPos, 88, 16, True, 9
     AddLabel "lblDr2", "Dr2", leftStart + 146, topPos, 88, 16, True, 9
-    AddLabel "lblReserve", "予備枠", leftStart + 242, topPos, 88, 16, True, 9
+    AddLabel "lblReserve", "Reserve", leftStart + 242, topPos, 88, 16, True, 9
     AddLabel "lblDH1", "DH1", leftStart + 338, topPos, 88, 16, True, 9
     AddLabel "lblDH2", "DH2", leftStart + 434, topPos, 88, 16, True, 9
 
@@ -115,10 +115,10 @@ End Sub
 Private Sub AddWorkPatternGrid(ByVal leftStart As Double, ByVal topStart As Double)
 
     Dim slotLabels As Variant
-    slotLabels = Array("Dr1", "Dr2", "予備枠", "DH1", "DH2")
+    slotLabels = Array("Dr1", "Dr2", "Reserve", "DH1", "DH2")
 
     Dim weekdayLabels As Variant
-    weekdayLabels = Array("月", "火", "水", "木", "金", "土", "日")
+    weekdayLabels = Array("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
 
     Dim c As Long
     Dim r As Long
@@ -261,9 +261,7 @@ Private Sub FillStaffCombo(ByVal cmb As MSForms.ComboBox, ByVal candidates As Co
         If Len(CStr(item)) > 0 Then cmb.AddItem CStr(item)
     Next item
 
-    If includeReserve Then
-        If Not ComboContains(cmb, "予備枠") Then cmb.AddItem "予備枠"
-    End If
+    ' Reserve may remain blank. Existing sheet values are loaded separately.
 
 End Sub
 
@@ -288,8 +286,8 @@ End Sub
 Private Sub AddWorkPatternItems(ByVal cmb As MSForms.ComboBox)
 
     Dim items As Variant
-    items = Array("", "休", "午前のみ", "15:00まで", "15:30まで", "16:00まで", _
-                  "16:30まで", "17:00まで", "17:30まで", "18:00まで", "18:30まで")
+    items = Array("", "off", "12:00", "15:00", "15:30", "16:00", _
+                  "16:30", "17:00", "17:30", "18:00", "18:30")
 
     AddItemsFromArray cmb, items
 
@@ -382,12 +380,12 @@ Private Function SaveSettings(Optional ByVal showMessage As Boolean = True, _
         wsS.Range(SETTINGS_MONTHLY_CLOSE_CELL).Value = cmbMonthlyClose.Value
     End If
 
-    If showMessage Then MsgBox "設定を保存しました。", vbInformation
+    If showMessage Then MsgBox "Settings saved.", vbInformation
     SaveSettings = True
     Exit Function
 
 ErrorHandler:
-    MsgBox "設定の保存中にエラーが発生しました。" & vbCrLf & Err.Description, vbCritical
+    MsgBox "Error while saving settings." & vbCrLf & Err.Description, vbCritical
     SaveSettings = False
 
 End Function
@@ -398,7 +396,7 @@ Private Function ValidateYearMonth(ByRef targetYear As Long, ByRef targetMonth A
     targetMonth = CLng(Val(cmbMonth.Value))
 
     If targetYear < 2000 Or targetYear > 2100 Or targetMonth < 1 Or targetMonth > 12 Then
-        MsgBox "年と月を正しく選択してください。", vbExclamation
+        MsgBox "Select a valid year and month.", vbExclamation
         ValidateYearMonth = False
         Exit Function
     End If
@@ -414,7 +412,7 @@ Private Function GetSettingsSheet() As Worksheet
     Exit Function
 
 NotFound:
-    Err.Raise vbObjectError + 200, , "Settingsシートが見つかりません。"
+    Err.Raise vbObjectError + 200, , "Settings sheet was not found."
 
 End Function
 
