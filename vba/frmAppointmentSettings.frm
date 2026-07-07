@@ -1,6 +1,6 @@
 VERSION 5.00
 Begin VB.UserForm frmAppointmentSettings
-   Caption         =   "アポ帳作成"
+   Caption         =   "月次アポ帳作成ウィザード"
    ClientHeight    =   7200
    ClientLeft      =   120
    ClientTop       =   465
@@ -57,48 +57,84 @@ End Sub
 
 Private Sub BuildForm()
 
-    Me.Caption = "アポ帳作成"
-    Me.Width = 720
-    Me.Height = 520
+    Me.Caption = "月次アポ帳作成ウィザード"
+    Me.Width = 760
+    Me.Height = 700
+    Me.BackColor = RGB(244, 247, 250)
 
-    AddLabel "lblTitle", "月次アポ帳作成フォーム", 12, 10, 260, 20, True, 14
+    AddLabel "lblTitle", "月次アポ帳作成ウィザード", 16, 10, 260, 22, True, 15
+    AddNoteLabel "lblLead", "月初に上から順番に確認してください。最後に作成ボタンを押すと、印刷設定まで整えたアポ帳を作成します。", 18, 34, 640, 28
 
-    AddLabel "lblYearMonth", "作成年月", 12, 42, 80, 18, True, 11
-    AddLabel "lblYear", "年", 28, 68, 24, 18, True, 10
-    Set cmbYear = AddCombo("cmbYear", 58, 64, 86, 20)
+    AddStepHeader "lblYearMonth", "1. 作成する年月", 16, 70, 690
+    AddNoteLabel "lblYearMonthNote", "作成したい月を選びます。通常は翌月を指定します。", 28, 96, 420, 16
+    AddLabel "lblYear", "年", 32, 122, 24, 18, True, 10
+    Set cmbYear = AddCombo("cmbYear", 62, 118, 86, 20)
     AddYearItems cmbYear
 
-    AddLabel "lblMonth", "月", 166, 68, 24, 18, True, 10
-    Set cmbMonth = AddCombo("cmbMonth", 196, 64, 62, 20)
+    AddLabel "lblMonth", "月", 170, 122, 24, 18, True, 10
+    Set cmbMonth = AddCombo("cmbMonth", 200, 118, 62, 20)
     AddMonthItems cmbMonth
 
-    AddLabel "lblStaff", "担当者", 12, 104, 80, 18, True, 11
-    AddLabel "lblStaffNote", "担当者マスターから選択します。予備枠は空欄または予備枠も選べます。", 88, 104, 430, 18, False, 9
-    AddStaffLabels 32, 130
-    Set cmbDr1 = AddCombo("cmbDr1", 82, 150, 88, 20)
-    Set cmbDr2 = AddCombo("cmbDr2", 178, 150, 88, 20)
-    Set cmbReserve = AddCombo("cmbReserve", 274, 150, 88, 20)
-    Set cmbDH1 = AddCombo("cmbDH1", 370, 150, 88, 20)
-    Set cmbDH2 = AddCombo("cmbDH2", 466, 150, 88, 20)
+    AddStepHeader "lblStaff", "2. 担当者", 16, 154, 690
+    AddNoteLabel "lblStaffNote", "各列に表示する担当者を選びます。予備枠は空欄のままでも作成できます。", 28, 180, 500, 16
+    AddStaffLabels 34, 206
+    Set cmbDr1 = AddCombo("cmbDr1", 84, 226, 88, 20)
+    Set cmbDr2 = AddCombo("cmbDr2", 180, 226, 88, 20)
+    Set cmbReserve = AddCombo("cmbReserve", 276, 226, 88, 20)
+    Set cmbDH1 = AddCombo("cmbDH1", 372, 226, 88, 20)
+    Set cmbDH2 = AddCombo("cmbDH2", 468, 226, 88, 20)
     Set staffCombos(1) = cmbDr1
     Set staffCombos(2) = cmbDr2
     Set staffCombos(3) = cmbReserve
     Set staffCombos(4) = cmbDH1
     Set staffCombos(5) = cmbDH2
 
-    AddLabel "lblWork", "曜日別の休み・早上がり", 12, 190, 170, 18, True, 11
-    AddLabel "lblWorkNote", "空欄=通常、休=休み、午前のみ=午前勤務、xx:xxまで=早上がり", 184, 190, 430, 18, False, 9
-    AddWorkPatternGrid 26, 218
+    AddStepHeader "lblWork", "3. 毎週の休み・早上がり", 16, 262, 690
+    AddNoteLabel "lblWorkNote", "空欄は通常勤務です。毎週同じ休みや早上がりだけ選びます。臨時の休みは次の手順で入力します。", 28, 288, 620, 16
+    AddWorkPatternGrid 28, 316
 
-    AddLabel "lblMonthlyClose", "医院全体の当月終了時刻", 12, 388, 170, 18, True, 11
-    AddLabel "lblMonthlyCloseNote", "通常は空欄。その月だけ早く閉める場合に選択します。", 184, 388, 360, 18, False, 9
-    Set cmbMonthlyClose = AddCombo("cmbMonthlyClose", 184, 414, 92, 20)
+    AddStepHeader "lblTemporary", "4. 臨時予定の確認・編集", 16, 484, 335
+    AddNoteLabel "lblTemporaryNote", "休診、早上がり、スタッフ休みなど、その月だけの予定を確認します。", 28, 510, 300, 30
+    Set btnRefreshExceptionDates = AddButton("btnRefreshExceptionDates", "臨時予定を確認・編集", 36, 544, 150, 28)
+
+    AddStepHeader "lblMonthlyClose", "医院全体の当月終了時刻", 370, 484, 335
+    AddNoteLabel "lblMonthlyCloseNote", "その月だけ医院全体を早く閉める場合に選びます。通常月は空欄です。", 382, 510, 300, 30
+    Set cmbMonthlyClose = AddCombo("cmbMonthlyClose", 386, 544, 92, 20)
     AddMonthlyCloseItems cmbMonthlyClose
 
-    Set btnSave = AddButton("btnSave", "設定を保存", 24, 458, 110, 28)
-    Set btnCreate = AddButton("btnCreate", "アポ帳を作成", 148, 458, 120, 28)
-    Set btnRefreshExceptionDates = AddButton("btnRefreshExceptionDates", "臨時予定を編集", 282, 458, 130, 28)
-    Set btnClose = AddButton("btnClose", "閉じる", 426, 458, 90, 28)
+    AddStepHeader "lblCreate", "5. アポ帳作成", 16, 584, 690
+    Set btnCreate = AddButton("btnCreate", "この内容でアポ帳を作成", 34, 616, 190, 32)
+    Set btnSave = AddButton("btnSave", "保存して閉じる", 242, 616, 130, 32)
+    Set btnClose = AddButton("btnClose", "閉じる", 390, 616, 90, 32)
+    StylePrimaryButton btnCreate
+    StyleSecondaryButton btnRefreshExceptionDates
+    StyleSecondaryButton btnSave
+
+End Sub
+
+Private Sub AddStepHeader(ByVal controlName As String, ByVal captionText As String, _
+                          ByVal leftPos As Double, ByVal topPos As Double, _
+                          ByVal controlWidth As Double)
+
+    Dim lbl As MSForms.Label
+    Set lbl = AddLabel(controlName, captionText, leftPos, topPos, controlWidth, 20, True, 10)
+
+    With lbl
+        .BackStyle = fmBackStyleOpaque
+        .BackColor = RGB(54, 96, 146)
+        .ForeColor = RGB(255, 255, 255)
+        .BorderStyle = fmBorderStyleSingle
+    End With
+
+End Sub
+
+Private Sub AddNoteLabel(ByVal controlName As String, ByVal captionText As String, _
+                         ByVal leftPos As Double, ByVal topPos As Double, _
+                         ByVal controlWidth As Double, ByVal controlHeight As Double)
+
+    Dim lbl As MSForms.Label
+    Set lbl = AddLabel(controlName, captionText, leftPos, topPos, controlWidth, controlHeight, False, 9)
+    lbl.ForeColor = RGB(89, 89, 89)
 
 End Sub
 
@@ -156,8 +192,10 @@ Private Function AddLabel(ByVal controlName As String, ByVal captionText As Stri
         .Top = topPos
         .Width = controlWidth
         .Height = controlHeight
+        .BackStyle = fmBackStyleTransparent
         .Font.Bold = isBold
         .Font.Size = fontSize
+        .WordWrap = True
     End With
 
     Set AddLabel = lbl
@@ -177,6 +215,7 @@ Private Function AddCombo(ByVal controlName As String, ByVal leftPos As Double, 
         .Height = controlHeight
         .Style = fmStyleDropDownList
         .MatchRequired = False
+        .Font.Size = 9
     End With
 
     Set AddCombo = cmb
@@ -197,11 +236,33 @@ Private Function AddButton(ByVal controlName As String, ByVal captionText As Str
         .Width = controlWidth
         .Height = controlHeight
         .Font.Bold = True
+        .Font.Size = 9
     End With
 
     Set AddButton = btn
 
 End Function
+
+Private Sub StylePrimaryButton(ByVal btn As MSForms.CommandButton)
+
+    With btn
+        .BackColor = RGB(47, 117, 181)
+        .ForeColor = RGB(255, 255, 255)
+        .Font.Size = 10
+        .Font.Bold = True
+    End With
+
+End Sub
+
+Private Sub StyleSecondaryButton(ByVal btn As MSForms.CommandButton)
+
+    With btn
+        .BackColor = RGB(217, 225, 242)
+        .ForeColor = RGB(31, 78, 121)
+        .Font.Bold = True
+    End With
+
+End Sub
 
 Private Sub LoadSettingsToForm()
 
@@ -420,7 +481,7 @@ End Function
 
 Private Sub btnSave_Click()
 
-    SaveSettings True, False
+    If SaveSettings(True, False) Then Unload Me
 
 End Sub
 
