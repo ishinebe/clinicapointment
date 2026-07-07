@@ -607,7 +607,7 @@ Private Sub SetupExceptionsSheet()
 
 End Sub
 
-Private Sub GenerateAppointmentBookCore(ByVal phaseName As String, Optional ByVal applyOneDayPageBreaks As Boolean = False)
+Private Sub GenerateAppointmentBookCore(ByVal phaseName As String, Optional ByVal shouldApplyOneDayPageBreaks As Boolean = False)
 
     On Error GoTo ErrorHandler
 
@@ -679,7 +679,7 @@ Private Sub GenerateAppointmentBookCore(ByVal phaseName As String, Optional ByVa
     Next d
 
     CopyTemplatePrintSettings wsT, wsO, templateRange, pasteRow - BLOCK_GAP_ROWS - 1
-    If applyOneDayPageBreaks Then
+    If shouldApplyOneDayPageBreaks Then
         ApplyOneDayPageBreaks wsO, templateRange, daysInMonth
     End If
 
