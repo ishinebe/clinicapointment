@@ -59,53 +59,53 @@ Private Sub BuildForm()
 
     Me.Caption = "月次アポ帳作成ウィザード"
     Me.Width = 760
-    Me.Height = 700
+    Me.Height = 585
     Me.BackColor = RGB(244, 247, 250)
 
-    AddLabel "lblTitle", "月次アポ帳作成ウィザード", 16, 10, 260, 22, True, 15
-    AddNoteLabel "lblLead", "月初に上から順番に確認してください。最後に作成ボタンを押すと、印刷設定まで整えたアポ帳を作成します。", 18, 34, 640, 28
+    AddLabel "lblTitle", "月次アポ帳作成ウィザード", 16, 8, 260, 20, True, 14
+    AddNoteLabel "lblLead", "上から順番に確認し、最後に作成ボタンを押します。", 18, 30, 520, 14
 
-    AddStepHeader "lblYearMonth", "1. 作成する年月", 16, 70, 690
-    AddNoteLabel "lblYearMonthNote", "作成したい月を選びます。通常は翌月を指定します。", 28, 96, 420, 16
-    AddLabel "lblYear", "年", 32, 122, 24, 18, True, 10
-    Set cmbYear = AddCombo("cmbYear", 62, 118, 86, 20)
+    AddStepHeader "lblYearMonth", "1. 作成する年月", 16, 52, 690
+    AddNoteLabel "lblYearMonthNote", "作成する月を選びます。通常は翌月です。", 28, 74, 420, 14
+    AddLabel "lblYear", "年", 32, 94, 24, 16, True, 9
+    Set cmbYear = AddCombo("cmbYear", 62, 90, 86, 18)
     AddYearItems cmbYear
 
-    AddLabel "lblMonth", "月", 170, 122, 24, 18, True, 10
-    Set cmbMonth = AddCombo("cmbMonth", 200, 118, 62, 20)
+    AddLabel "lblMonth", "月", 170, 94, 24, 16, True, 9
+    Set cmbMonth = AddCombo("cmbMonth", 200, 90, 62, 18)
     AddMonthItems cmbMonth
 
-    AddStepHeader "lblStaff", "2. 担当者", 16, 154, 690
-    AddNoteLabel "lblStaffNote", "各列に表示する担当者を選びます。予備枠は空欄のままでも作成できます。", 28, 180, 500, 16
-    AddStaffLabels 34, 206
-    Set cmbDr1 = AddCombo("cmbDr1", 84, 226, 88, 20)
-    Set cmbDr2 = AddCombo("cmbDr2", 180, 226, 88, 20)
-    Set cmbReserve = AddCombo("cmbReserve", 276, 226, 88, 20)
-    Set cmbDH1 = AddCombo("cmbDH1", 372, 226, 88, 20)
-    Set cmbDH2 = AddCombo("cmbDH2", 468, 226, 88, 20)
+    AddStepHeader "lblStaff", "2. 担当者", 16, 122, 690
+    AddNoteLabel "lblStaffNote", "各列に表示する担当者を選びます。予備枠は空欄でも作成できます。", 28, 144, 500, 14
+    AddStaffLabels 34, 164
+    Set cmbDr1 = AddCombo("cmbDr1", 84, 182, 88, 18)
+    Set cmbDr2 = AddCombo("cmbDr2", 180, 182, 88, 18)
+    Set cmbReserve = AddCombo("cmbReserve", 276, 182, 88, 18)
+    Set cmbDH1 = AddCombo("cmbDH1", 372, 182, 88, 18)
+    Set cmbDH2 = AddCombo("cmbDH2", 468, 182, 88, 18)
     Set staffCombos(1) = cmbDr1
     Set staffCombos(2) = cmbDr2
     Set staffCombos(3) = cmbReserve
     Set staffCombos(4) = cmbDH1
     Set staffCombos(5) = cmbDH2
 
-    AddStepHeader "lblWork", "3. 毎週の休み・早上がり", 16, 262, 690
-    AddNoteLabel "lblWorkNote", "空欄は通常勤務です。毎週同じ休みや早上がりだけ選びます。臨時の休みは次の手順で入力します。", 28, 288, 620, 16
-    AddWorkPatternGrid 28, 316
+    AddStepHeader "lblWork", "3. 毎週の休み・早上がり", 16, 214, 690
+    AddNoteLabel "lblWorkNote", "空欄は通常勤務。毎週同じ休みや早上がりだけ選びます。", 28, 236, 560, 14
+    AddWorkPatternGrid 28, 258
 
-    AddStepHeader "lblMonthlyClose", "4. 医院全体の当月終了時刻", 16, 484, 335
-    AddNoteLabel "lblMonthlyCloseNote", "その月だけ医院全体を早く閉める場合に選びます。通常月は空欄です。", 28, 510, 300, 30
-    Set cmbMonthlyClose = AddCombo("cmbMonthlyClose", 32, 544, 92, 20)
+    AddStepHeader "lblMonthlyClose", "4. 医院全体の当月終了時刻", 16, 410, 335
+    AddNoteLabel "lblMonthlyCloseNote", "その月だけ早く閉める場合に選択。通常は空欄です。", 28, 432, 300, 24
+    Set cmbMonthlyClose = AddCombo("cmbMonthlyClose", 32, 462, 92, 18)
     AddMonthlyCloseItems cmbMonthlyClose
 
-    AddStepHeader "lblTemporary", "5. 臨時予定の確認・編集", 370, 484, 335
-    AddNoteLabel "lblTemporaryNote", "休診、早上がり、スタッフ休みなど、その月だけの予定を確認します。", 382, 510, 300, 30
-    Set btnRefreshExceptionDates = AddButton("btnRefreshExceptionDates", "臨時予定を確認・編集", 390, 544, 150, 28)
+    AddStepHeader "lblTemporary", "5. 臨時予定の確認・編集", 370, 410, 335
+    AddNoteLabel "lblTemporaryNote", "休診、早上がり、スタッフ休みなどを確認します。", 382, 432, 300, 24
+    Set btnRefreshExceptionDates = AddButton("btnRefreshExceptionDates", "臨時予定を確認・編集", 390, 462, 150, 26)
 
-    AddStepHeader "lblCreate", "6. アポ帳作成", 16, 584, 690
-    Set btnCreate = AddButton("btnCreate", "この内容でアポ帳を作成", 34, 616, 190, 32)
-    Set btnSave = AddButton("btnSave", "保存して閉じる", 242, 616, 130, 32)
-    Set btnClose = AddButton("btnClose", "閉じる", 390, 616, 90, 32)
+    AddStepHeader "lblCreate", "6. アポ帳作成", 16, 504, 690
+    Set btnCreate = AddButton("btnCreate", "この内容でアポ帳を作成", 34, 530, 190, 30)
+    Set btnSave = AddButton("btnSave", "保存して閉じる", 242, 530, 130, 30)
+    Set btnClose = AddButton("btnClose", "閉じる", 390, 530, 90, 30)
     StylePrimaryButton btnCreate
     StyleSecondaryButton btnRefreshExceptionDates
     StyleSecondaryButton btnSave
@@ -160,18 +160,21 @@ Private Sub AddWorkPatternGrid(ByVal leftStart As Double, ByVal topStart As Doub
     Dim r As Long
     Dim x As Double
     Dim y As Double
+    Dim rowStep As Double
+
+    rowStep = 16
 
     For c = 1 To STAFF_SLOT_COUNT
         x = leftStart + 42 + ((c - 1) * 96)
-        AddLabel "lblWorkHeader" & CStr(c), CStr(slotLabels(c - 1)), x, topStart, 88, 16, True, 9
+        AddLabel "lblWorkHeader" & CStr(c), CStr(slotLabels(c - 1)), x, topStart, 88, 14, True, 9
     Next c
 
     For r = 1 To WEEKDAY_COUNT
-        y = topStart + 22 + ((r - 1) * 22)
-        AddLabel "lblWeekday" & CStr(r), CStr(weekdayLabels(r - 1)), leftStart, y + 2, 30, 16, True, 9
+        y = topStart + 18 + ((r - 1) * rowStep)
+        AddLabel "lblWeekday" & CStr(r), CStr(weekdayLabels(r - 1)), leftStart, y + 1, 30, 14, True, 9
         For c = 1 To STAFF_SLOT_COUNT
             x = leftStart + 42 + ((c - 1) * 96)
-            Set workCombos(r, c) = AddCombo("cmbWork_" & CStr(r) & "_" & CStr(c), x, y, 88, 18)
+            Set workCombos(r, c) = AddCombo("cmbWork_" & CStr(r) & "_" & CStr(c), x, y, 88, 16)
             AddWorkPatternItems workCombos(r, c)
         Next c
     Next r
