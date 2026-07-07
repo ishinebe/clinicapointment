@@ -31,6 +31,7 @@ Public Sub ApplyOneDayOnePagePrintSettings()
 
     NormalizeOutputRowHeights wsT, wsO, daysInOutput
     lastRow = 1 + (daysInOutput - 1) * ONE_DAY_BLOCK_STEP + TEMPLATE_ROW_COUNT - 1
+    ApplyShadeStartTopBorders wsO, lastRow
     ApplyPrintSettingsCore wsO, lastRow, daysInOutput
 
     MsgBox "Print settings updated. Please check Page Break Preview before printing.", vbInformation
@@ -45,6 +46,31 @@ End Sub
 Public Sub GenerateAppointmentBook_Phase5_WithOneDayPrintSettings()
     GenerateAppointmentBook_Phase5
     ApplyOneDayOnePagePrintSettings
+End Sub
+
+Public Sub ApplyShadeStartTopBordersToOutput()
+    On Error GoTo ErrorHandler
+
+    Dim wsO As Worksheet
+    Set wsO = ThisWorkbook.Worksheets(SHEET_OUTPUT)
+
+    Dim lastRow As Long
+    lastRow = GetLastOutputRow(wsO)
+
+    If lastRow < TEMPLATE_ROW_COUNT Then
+        MsgBox "Output sheet has no appointment book. Please generate it first.", vbExclamation
+        Exit Sub
+    End If
+
+    ApplyShadeStartTopBorders wsO, lastRow
+
+    MsgBox "Shading start borders updated.", vbInformation
+    Exit Sub
+
+ErrorHandler:
+    MsgBox "Error while updating shading start borders." & vbCrLf & _
+           "Number: " & Err.Number & vbCrLf & _
+           "Description: " & Err.Description, vbCritical
 End Sub
 
 Private Sub NormalizeOutputRowHeights(ByVal wsT As Worksheet, ByVal wsO As Worksheet, ByVal daysInOutput As Long)
@@ -64,6 +90,42 @@ Private Sub NormalizeOutputRowHeights(ByVal wsT As Worksheet, ByVal wsO As Works
             wsO.Rows(blockStartRow + TEMPLATE_ROW_COUNT + gapIndex).RowHeight = GAP_ROW_HEIGHT
         Next gapIndex
     Next dayIndex
+End Sub
+
+Private Sub ApplyShadeStartTopBorders(ByVal wsO As Worksheet, ByVal lastRow As Long)
+    Dim r As Long
+    Dim c As Long
+    Dim currentCell As Range
+
+    For r = 1 To lastRow
+        For c = OUTPUT_FIRST_COL To OUTPUT_LAST_COL
+            Set currentCell = wsO.Cells(r, c)
+
+            If IsHatchedCell(currentCell) Then
+                If r = 1 Or Not IsHatchedCell(wsO.Cells(r - 1, c)) Then
+                    ApplyMediumTopBorder currentCell
+                End If
+            End If
+        Next c
+    Next r
+End Sub
+
+Private Function IsHatchedCell(ByVal targetCell As Range) As Boolean
+    On Error GoTo SafeExit
+
+    IsHatchedCell = (targetCell.Interior.Pattern = xlLightDown)
+    Exit Function
+
+SafeExit:
+    IsHatchedCell = False
+End Function
+
+Private Sub ApplyMediumTopBorder(ByVal targetCell As Range)
+    With targetCell.Borders(xlEdgeTop)
+        .LineStyle = xlContinuous
+        .Weight = xlMedium
+        .Color = RGB(0, 0, 0)
+    End With
 End Sub
 
 Private Sub ApplyPrintSettingsCore(ByVal wsO As Worksheet, ByVal lastRow As Long, ByVal daysInOutput As Long)
