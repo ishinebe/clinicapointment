@@ -60,71 +60,151 @@ Private Sub BuildForm()
     Me.Caption = "月次アポ帳作成ウィザード"
     Me.Width = 760
     Me.Height = 585
-    Me.BackColor = RGB(244, 247, 250)
+    Me.BackColor = RGB(248, 250, 252)
 
-    AddLabel "lblTitle", "月次アポ帳作成ウィザード", 16, 8, 260, 20, True, 14
-    AddNoteLabel "lblLead", "上から順番に確認し、最後に作成ボタンを押します。", 18, 30, 520, 14
+    AddLabel "lblTitle", "月次アポ帳作成ウィザード", 24, 12, 280, 24, True, 16
+    AddNoteLabel "lblLead", "上から順番に確認し、最後に作成ボタンを押します。", 26, 40, 430, 14
+    AddHelpBox 542, 12, 178, 78
 
-    AddStepHeader "lblYearMonth", "1. 作成する年月", 16, 52, 690
-    AddNoteLabel "lblYearMonthNote", "作成する月を選びます。通常は翌月です。", 28, 74, 420, 14
-    AddLabel "lblYear", "年", 32, 94, 24, 16, True, 9
-    Set cmbYear = AddCombo("cmbYear", 62, 90, 86, 18)
+    AddCard "cardYearMonth", 16, 98, 270, 86, RGB(244, 249, 255), RGB(157, 195, 230)
+    AddStepHeader "lblYearMonth", "1. 作成する年月", 32, 110, 230, RGB(47, 117, 181)
+    AddNoteLabel "lblYearMonthNote", "作成する月を選びます。", 42, 136, 190, 14
+    AddLabel "lblYear", "年", 42, 160, 24, 16, True, 9
+    Set cmbYear = AddCombo("cmbYear", 72, 156, 72, 18)
     AddYearItems cmbYear
 
-    AddLabel "lblMonth", "月", 170, 94, 24, 16, True, 9
-    Set cmbMonth = AddCombo("cmbMonth", 200, 90, 62, 18)
+    AddLabel "lblMonth", "月", 162, 160, 24, 16, True, 9
+    Set cmbMonth = AddCombo("cmbMonth", 192, 156, 54, 18)
     AddMonthItems cmbMonth
 
-    AddStepHeader "lblStaff", "2. 担当者", 16, 122, 690
-    AddNoteLabel "lblStaffNote", "各列に表示する担当者を選びます。予備枠は空欄でも作成できます。", 28, 144, 500, 14
-    AddStaffLabels 34, 164
-    Set cmbDr1 = AddCombo("cmbDr1", 84, 182, 88, 18)
-    Set cmbDr2 = AddCombo("cmbDr2", 180, 182, 88, 18)
-    Set cmbReserve = AddCombo("cmbReserve", 276, 182, 88, 18)
-    Set cmbDH1 = AddCombo("cmbDH1", 372, 182, 88, 18)
-    Set cmbDH2 = AddCombo("cmbDH2", 468, 182, 88, 18)
+    AddCard "cardStaff", 296, 98, 424, 86, RGB(246, 253, 247), RGB(169, 208, 142)
+    AddStepHeader "lblStaff", "2. 担当者", 312, 110, 380, RGB(34, 139, 76)
+    AddNoteLabel "lblStaffNote", "各列に表示する担当者を選びます。", 322, 136, 300, 14
+    AddStaffLabels 286, 150
+    Set cmbDr1 = AddCombo("cmbDr1", 336, 166, 70, 18)
+    Set cmbDr2 = AddCombo("cmbDr2", 414, 166, 70, 18)
+    Set cmbReserve = AddCombo("cmbReserve", 492, 166, 70, 18)
+    Set cmbDH1 = AddCombo("cmbDH1", 570, 166, 70, 18)
+    Set cmbDH2 = AddCombo("cmbDH2", 648, 166, 70, 18)
     Set staffCombos(1) = cmbDr1
     Set staffCombos(2) = cmbDr2
     Set staffCombos(3) = cmbReserve
     Set staffCombos(4) = cmbDH1
     Set staffCombos(5) = cmbDH2
 
-    AddStepHeader "lblWork", "3. 毎週の休み・早上がり", 16, 214, 690
-    AddNoteLabel "lblWorkNote", "空欄は通常勤務。毎週同じ休みや早上がりだけ選びます。", 28, 236, 560, 14
-    AddWorkPatternGrid 28, 258
+    AddCard "cardWork", 16, 194, 704, 204, RGB(248, 251, 255), RGB(157, 195, 230)
+    AddStepHeader "lblWork", "3. 毎週の休み・早上がり", 32, 204, 640, RGB(47, 117, 181)
+    AddNoteLabel "lblWorkNote", "空欄は通常勤務。毎週同じ休みや早上がりだけ選びます。", 42, 228, 520, 14
+    AddWorkPatternGrid 42, 250
+    AddGuideBox 586, 292, 110, 78
 
-    AddStepHeader "lblMonthlyClose", "4. 医院全体の当月終了時刻", 16, 410, 335
-    AddNoteLabel "lblMonthlyCloseNote", "その月だけ早く閉める場合に選択。通常は空欄です。", 28, 432, 300, 24
-    Set cmbMonthlyClose = AddCombo("cmbMonthlyClose", 32, 462, 92, 18)
+    AddCard "cardMonthlyClose", 16, 406, 320, 82, RGB(255, 250, 240), RGB(244, 176, 132)
+    AddStepHeader "lblMonthlyClose", "4. 医院全体の当月終了時刻", 32, 416, 280, RGB(197, 90, 17)
+    AddNoteLabel "lblMonthlyCloseNote", "その月だけ早く閉める場合に選択。", 42, 442, 230, 14
+    Set cmbMonthlyClose = AddCombo("cmbMonthlyClose", 42, 464, 92, 18)
     AddMonthlyCloseItems cmbMonthlyClose
 
-    AddStepHeader "lblTemporary", "5. 臨時予定の確認・編集", 370, 410, 335
-    AddNoteLabel "lblTemporaryNote", "休診、早上がり、スタッフ休みなどを確認します。", 382, 432, 300, 24
-    Set btnRefreshExceptionDates = AddButton("btnRefreshExceptionDates", "臨時予定を確認・編集", 390, 462, 150, 26)
+    AddCard "cardTemporary", 350, 406, 370, 82, RGB(250, 247, 255), RGB(180, 167, 214)
+    AddStepHeader "lblTemporary", "5. 臨時予定の確認・編集", 366, 416, 320, RGB(112, 48, 160)
+    AddNoteLabel "lblTemporaryNote", "休診、早上がり、スタッフ休みなどを確認します。", 376, 442, 280, 14
+    Set btnRefreshExceptionDates = AddButton("btnRefreshExceptionDates", "臨時予定を確認・編集", 440, 462, 150, 26)
 
-    AddStepHeader "lblCreate", "6. アポ帳作成", 16, 504, 690
-    Set btnCreate = AddButton("btnCreate", "この内容でアポ帳を作成", 34, 530, 190, 30)
-    Set btnSave = AddButton("btnSave", "保存して閉じる", 242, 530, 130, 30)
-    Set btnClose = AddButton("btnClose", "閉じる", 390, 530, 90, 30)
+    AddCard "cardCreate", 16, 496, 704, 70, RGB(255, 246, 246), RGB(248, 170, 170)
+    AddStepHeader "lblCreate", "6. アポ帳を作成します", 32, 508, 250, RGB(192, 0, 0)
+    AddNoteLabel "lblCreateNote", "上記の内容を確認し、アポ帳を作成します。", 42, 536, 230, 14
+    Set btnCreate = AddButton("btnCreate", "この内容でアポ帳を作成", 286, 518, 190, 32)
+    Set btnSave = AddButton("btnSave", "保存して閉じる", 496, 518, 110, 32)
+    Set btnClose = AddButton("btnClose", "閉じる", 622, 518, 70, 32)
     StylePrimaryButton btnCreate
     StyleSecondaryButton btnRefreshExceptionDates
     StyleSecondaryButton btnSave
 
 End Sub
 
-Private Sub AddStepHeader(ByVal controlName As String, ByVal captionText As String, _
-                          ByVal leftPos As Double, ByVal topPos As Double, _
-                          ByVal controlWidth As Double)
+Private Sub AddCard(ByVal controlName As String, ByVal leftPos As Double, ByVal topPos As Double, _
+                    ByVal controlWidth As Double, ByVal controlHeight As Double, _
+                    ByVal fillColor As Long, ByVal borderColor As Long)
 
     Dim lbl As MSForms.Label
-    Set lbl = AddLabel(controlName, captionText, leftPos, topPos, controlWidth, 20, True, 10)
+    Set lbl = Me.Controls.Add("Forms.Label.1", controlName, True)
+
+    With lbl
+        .Caption = ""
+        .Left = leftPos
+        .Top = topPos
+        .Width = controlWidth
+        .Height = controlHeight
+        .BackStyle = fmBackStyleOpaque
+        .BackColor = fillColor
+        .BorderColor = borderColor
+        .BorderStyle = fmBorderStyleSingle
+        .ZOrder 1
+    End With
+
+End Sub
+
+Private Sub AddStepHeader(ByVal controlName As String, ByVal captionText As String, _
+                          ByVal leftPos As Double, ByVal topPos As Double, _
+                          ByVal controlWidth As Double, ByVal accentColor As Long)
+
+    Dim stepText As String
+    Dim titleText As String
+    Dim dotPos As Long
+
+    dotPos = InStr(1, captionText, ".")
+    If dotPos > 0 Then
+        stepText = Trim$(Left$(captionText, dotPos - 1))
+        titleText = Trim$(Mid$(captionText, dotPos + 1))
+    Else
+        stepText = ""
+        titleText = captionText
+    End If
+
+    AddStepBadge controlName & "_badge", stepText, leftPos, topPos, accentColor
+
+    Dim lbl As MSForms.Label
+    Set lbl = AddLabel(controlName, titleText, leftPos + 28, topPos + 2, controlWidth - 32, 18, True, 11)
+    lbl.ForeColor = accentColor
+
+End Sub
+
+Private Sub AddStepBadge(ByVal controlName As String, ByVal captionText As String, _
+                         ByVal leftPos As Double, ByVal topPos As Double, _
+                         ByVal accentColor As Long)
+
+    Dim lbl As MSForms.Label
+    Set lbl = AddLabel(controlName, captionText, leftPos, topPos, 20, 20, True, 11)
 
     With lbl
         .BackStyle = fmBackStyleOpaque
-        .BackColor = RGB(54, 96, 146)
+        .BackColor = accentColor
         .ForeColor = RGB(255, 255, 255)
+        .TextAlign = fmTextAlignCenter
         .BorderStyle = fmBorderStyleSingle
+        .BorderColor = accentColor
     End With
+
+End Sub
+
+Private Sub AddHelpBox(ByVal leftPos As Double, ByVal topPos As Double, _
+                       ByVal controlWidth As Double, ByVal controlHeight As Double)
+
+    AddCard "cardHelp", leftPos, topPos, controlWidth, controlHeight, RGB(255, 252, 242), RGB(244, 176, 49)
+    AddLabel "lblHelpTitle", "使い方", leftPos + 12, topPos + 8, controlWidth - 24, 14, True, 9
+    AddNoteLabel "lblHelp1", "・空欄は通常勤務", leftPos + 14, topPos + 27, controlWidth - 28, 12
+    AddNoteLabel "lblHelp2", "・今月だけの変更を選択", leftPos + 14, topPos + 42, controlWidth - 28, 12
+    AddNoteLabel "lblHelp3", "・最後に作成ボタンを押す", leftPos + 14, topPos + 57, controlWidth - 28, 12
+
+End Sub
+
+Private Sub AddGuideBox(ByVal leftPos As Double, ByVal topPos As Double, _
+                        ByVal controlWidth As Double, ByVal controlHeight As Double)
+
+    AddCard "cardWorkGuide", leftPos, topPos, controlWidth, controlHeight, RGB(255, 255, 255), RGB(157, 195, 230)
+    AddLabel "lblWorkGuideTitle", "選択の目安", leftPos + 10, topPos + 8, controlWidth - 20, 14, True, 9
+    AddNoteLabel "lblWorkGuide1", "休: 終日休診", leftPos + 10, topPos + 28, controlWidth - 20, 12
+    AddNoteLabel "lblWorkGuide2", "〜まで: その時刻で終了", leftPos + 10, topPos + 43, controlWidth - 20, 12
+    AddNoteLabel "lblWorkGuide3", "空欄: 通常勤務", leftPos + 10, topPos + 58, controlWidth - 20, 12
 
 End Sub
 
@@ -249,7 +329,7 @@ End Function
 Private Sub StylePrimaryButton(ByVal btn As MSForms.CommandButton)
 
     With btn
-        .BackColor = RGB(47, 117, 181)
+        .BackColor = RGB(255, 73, 85)
         .ForeColor = RGB(255, 255, 255)
         .Font.Size = 10
         .Font.Bold = True
@@ -260,7 +340,7 @@ End Sub
 Private Sub StyleSecondaryButton(ByVal btn As MSForms.CommandButton)
 
     With btn
-        .BackColor = RGB(217, 225, 242)
+        .BackColor = RGB(236, 243, 255)
         .ForeColor = RGB(31, 78, 121)
         .Font.Bold = True
     End With
