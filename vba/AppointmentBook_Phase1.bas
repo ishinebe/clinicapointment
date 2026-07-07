@@ -751,14 +751,47 @@ Private Sub ReplaceStaffHeadersIfConfigured(ByVal wsO As Worksheet, ByVal wsS As
     Dim targetCell As Range
 
     For i = 1 To STAFF_SLOT_COUNT
-        If Len(staffNames(i)) > 0 Then
+        If Len(staffNames(i)) > 0 Or i = 3 Then
             Set targetCell = wsO.Cells(headerRow, targetCols(i))
             If targetCell.MergeCells Then Set targetCell = targetCell.MergeArea.Cells(1, 1)
-            targetCell.Value = staffNames(i)
+            targetCell.Value = FormatStaffHeaderForOutput(i, staffNames(i))
         End If
     Next i
 
 End Sub
+
+Private Function FormatStaffHeaderForOutput(ByVal slotIndex As Long, ByVal staffName As String) As String
+
+    Dim displayName As String
+    displayName = Trim$(staffName)
+
+    Select Case slotIndex
+        Case 1, 2
+            If Len(displayName) = 0 Then
+                FormatStaffHeaderForOutput = ""
+            ElseIf Left$(displayName, 3) = "Dr." Then
+                FormatStaffHeaderForOutput = displayName
+            Else
+                FormatStaffHeaderForOutput = "Dr." & displayName
+            End If
+
+        Case 3
+            FormatStaffHeaderForOutput = "予備枠"
+
+        Case 4, 5
+            If Len(displayName) = 0 Then
+                FormatStaffHeaderForOutput = ""
+            ElseIf Left$(displayName, 3) = "DH." Then
+                FormatStaffHeaderForOutput = displayName
+            Else
+                FormatStaffHeaderForOutput = "DH." & displayName
+            End If
+
+        Case Else
+            FormatStaffHeaderForOutput = displayName
+    End Select
+
+End Function
 
 Private Sub ApplyStaffWorkPatternIfConfigured(ByVal wsO As Worksheet, ByVal wsS As Worksheet, ByVal pasteRow As Long, ByVal currentDate As Date)
 
@@ -868,25 +901,13 @@ End Sub
 
 Private Sub MarkStaffHeaderOff(ByVal ws As Worksheet, ByVal pasteRow As Long, ByVal targetCol As Long)
 
-    Dim headerCell As Range
-    Set headerCell = ws.Cells(pasteRow + HEADER_ROW_IN_TEMPLATE - 1, targetCol)
-    If headerCell.MergeCells Then Set headerCell = headerCell.MergeArea.Cells(1, 1)
-
-    If InStr(CStr(headerCell.Value), "休") = 0 Then
-        headerCell.Value = CStr(headerCell.Value) & " 休"
-    End If
+    ' Staff absence is shown by shading the staff column. Keep headers clean.
 
 End Sub
 
 Private Sub MarkStaffHeaderUntil(ByVal ws As Worksheet, ByVal pasteRow As Long, ByVal targetCol As Long, ByVal timeText As String)
 
-    Dim headerCell As Range
-    Set headerCell = ws.Cells(pasteRow + HEADER_ROW_IN_TEMPLATE - 1, targetCol)
-    If headerCell.MergeCells Then Set headerCell = headerCell.MergeArea.Cells(1, 1)
-
-    If InStr(CStr(headerCell.Value), "まで") = 0 Then
-        headerCell.Value = CStr(headerCell.Value) & " " & timeText & "まで"
-    End If
+    ' Short-time work is shown by shading from the close time. Do not append time text to headers.
 
 End Sub
 
