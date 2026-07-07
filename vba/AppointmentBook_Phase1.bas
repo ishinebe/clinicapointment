@@ -3,7 +3,7 @@ Option Explicit
 '============================================================
 ' ClinicAppointment
 ' Module: AppointmentBook
-' Version: 2026.07.07-Phase5F-exceptions-staff-friendly-labels
+' Version: 2026.07.07-Phase6A-user-friendly-settings-ui
 '
 ' Important:
 ' - One-day template range is fixed to Template!A1:J46.
@@ -30,6 +30,8 @@ Private Const SETTINGS_WORK_PATTERN_RANGE As String = "B7:F13"
 Private Const SETTINGS_STAFF_MASTER_RANGE As String = "H5:H24"
 Private Const SETTINGS_MONTHLY_CLOSE_CELL As String = "B16"
 Private Const SETTINGS_MONTHLY_CLOSE_RANGE As String = "B16:F16"
+Private Const BUTTON_CREATE_APPOINTMENT As String = "btnCreateAppointmentBook"
+Private Const BUTTON_REFRESH_EXCEPTION_DATES As String = "btnRefreshExceptionDates"
 
 Private Const TEMPLATE_ONE_DAY_RANGE As String = "A1:J46"
 Private Const BLOCK_GAP_ROWS As Long = 2
@@ -74,7 +76,19 @@ Public Sub SetupSettingsDropdowns()
     Dim wsS As Worksheet
     Set wsS = GetSheetOrError(SHEET_SETTINGS)
 
+    Dim previousScreenUpdating As Boolean
+    Dim previousEnableEvents As Boolean
+    Dim previousDisplayAlerts As Boolean
+    Dim appStateCaptured As Boolean
+
+    previousScreenUpdating = Application.ScreenUpdating
+    previousEnableEvents = Application.EnableEvents
+    previousDisplayAlerts = Application.DisplayAlerts
+    appStateCaptured = True
+
     Application.ScreenUpdating = False
+    Application.EnableEvents = False
+    Application.DisplayAlerts = False
 
     ApplySettingsLabels wsS
     InitializeStaffMasterFromCurrentHeaders wsS
@@ -82,26 +96,89 @@ Public Sub SetupSettingsDropdowns()
     ApplyWorkPatternDropdowns wsS
     ApplyMonthlyCloseDropdown wsS
     SetupExceptionsSheet
+    CreateAppointmentBookButton
+    CreateRefreshExceptionDatesButton
 
-    Application.ScreenUpdating = True
+    Application.DisplayAlerts = previousDisplayAlerts
+    Application.EnableEvents = previousEnableEvents
+    Application.ScreenUpdating = previousScreenUpdating
 
-    MsgBox "Settings dropdowns are ready." & vbCrLf & _
-           "Staff headers: Settings!B5:F5" & vbCrLf & _
-           "Work pattern: Settings!B7:F13" & vbCrLf & _
-           "Clinic monthly close: Settings!B16:F16" & vbCrLf & _
-           "Exceptions sheet is ready." & vbCrLf & _
-           "Blank = normal. Use one dropdown cell for off or short-time.", vbInformation
+    MsgBox "Settingsシートを操作画面として整えました。" & vbCrLf & _
+           "年月、担当者、曜日別勤務パターンを確認してから「アポ帳を作成」ボタンを押してください。", vbInformation
     Exit Sub
 
 ErrorHandler:
-    Application.ScreenUpdating = True
-    MsgBox "Error while setting up Settings dropdowns." & vbCrLf & _
+    If appStateCaptured Then
+        Application.DisplayAlerts = previousDisplayAlerts
+        Application.EnableEvents = previousEnableEvents
+        Application.ScreenUpdating = previousScreenUpdating
+    Else
+        Application.DisplayAlerts = True
+        Application.EnableEvents = True
+        Application.ScreenUpdating = True
+    End If
+
+    MsgBox "Settingsシートの設定中にエラーが発生しました。" & vbCrLf & _
            "Number: " & Err.Number & vbCrLf & _
            "Description: " & Err.Description, vbCritical
 
 End Sub
 
+Public Sub SetupUserFriendlySettings()
+    SetupSettingsDropdowns
+End Sub
+
+Public Sub CreateAppointmentBookButton()
+
+    Dim wsS As Worksheet
+    Set wsS = GetSheetOrError(SHEET_SETTINGS)
+
+    DeleteShapeIfExists wsS, BUTTON_CREATE_APPOINTMENT
+    AddSettingsButton wsS, BUTTON_CREATE_APPOINTMENT, "アポ帳を作成", _
+        "GenerateAppointmentBook_Phase5", wsS.Range("A21"), 170, 42, _
+        RGB(47, 117, 181), RGB(255, 255, 255)
+
+End Sub
+
+Public Sub CreateRefreshExceptionDatesButton()
+
+    Dim wsS As Worksheet
+    Set wsS = GetSheetOrError(SHEET_SETTINGS)
+
+    DeleteShapeIfExists wsS, BUTTON_REFRESH_EXCEPTION_DATES
+    AddSettingsButton wsS, BUTTON_REFRESH_EXCEPTION_DATES, "例外日付を更新", _
+        "SetupExceptionsDateDropdowns", wsS.Range("D21"), 170, 42, _
+        RGB(112, 173, 71), RGB(255, 255, 255)
+
+End Sub
+
 Private Sub ApplySettingsLabels(ByVal wsS As Worksheet)
+
+    PrepareSettingsVisualBase wsS
+
+    wsS.Range("A1").Value = "アポ帳作成 設定画面"
+
+    wsS.Range("A2").Value = "年"
+    wsS.Range("A3").Value = "月"
+    wsS.Range("C2").Value = "1. 作成する年月"
+    wsS.Range("C3").Value = "西暦の年と月を入力してください。例: 2027年2月なら、年=2027、月=2。"
+
+    wsS.Range("A4").Value = "2. 担当者"
+    wsS.Range("B4").Value = "Dr1"
+    wsS.Range("C4").Value = "Dr2"
+    wsS.Range("D4").Value = "予備枠"
+    wsS.Range("E4").Value = "DH1"
+    wsS.Range("F4").Value = "DH2"
+    wsS.Range("G4").Value = "担当者マスターから選択します。"
+    wsS.Range("A5").Value = "担当者名"
+
+    wsS.Range("A6").Value = "3. 曜日別の休み・早上がり"
+    wsS.Range("B6").Value = "Dr1"
+    wsS.Range("C6").Value = "Dr2"
+    wsS.Range("D6").Value = "予備枠"
+    wsS.Range("E6").Value = "DH1"
+    wsS.Range("F6").Value = "DH2"
+    wsS.Range("G6").Value = "空欄=通常、休=休み、午前のみ=午前勤務、xx:xxまで=その時刻で終了。"
 
     wsS.Range("A7").Value = "月"
     wsS.Range("A8").Value = "火"
@@ -111,10 +188,143 @@ Private Sub ApplySettingsLabels(ByVal wsS As Worksheet)
     wsS.Range("A12").Value = "土"
     wsS.Range("A13").Value = "日"
 
+    wsS.Range("A15").Value = "4. 医院全体の当月終了時刻"
     wsS.Range("A16").Value = "医院全体の当月原則終了時刻"
+    wsS.Range("G16").Value = "通常は空欄。その月だけ全体的に早く閉める場合のみ選択します。"
     PrepareMonthlyCloseVisualRange wsS
 
+    wsS.Range("H3").Value = "5. スタッフ一覧"
     wsS.Range("H4").Value = "担当者マスター"
+    wsS.Range("I4").Value = "ここに名前を追加すると、担当者欄のプルダウンに使われます。"
+
+    wsS.Range("A19").Value = "6. 作成"
+    wsS.Range("A20").Value = "設定が終わったら「アポ帳を作成」を押します。年月を変えたときは、必要に応じて「例外日付を更新」も押してください。"
+
+    ApplySettingsVisualFormat wsS
+
+End Sub
+
+Private Sub PrepareSettingsVisualBase(ByVal wsS As Worksheet)
+
+    With wsS
+        .Columns("A").ColumnWidth = 16
+        .Columns("B:F").ColumnWidth = 14
+        .Columns("G").ColumnWidth = 34
+        .Columns("H").ColumnWidth = 20
+        .Columns("I:J").ColumnWidth = 24
+        .Rows("1").RowHeight = 32
+        .Rows("4:6").RowHeight = 24
+        .Rows("15:16").RowHeight = 24
+        .Rows("19:21").RowHeight = 26
+    End With
+
+    With wsS.Range("A1:J1")
+        .UnMerge
+        .Merge
+    End With
+
+    wsS.Range("C2:J3,G4:J4,G6:J6,G16:J16,H3:J4,A19:J20").WrapText = True
+
+End Sub
+
+Private Sub ApplySettingsVisualFormat(ByVal wsS As Worksheet)
+
+    Dim inputFill As Long
+    Dim sectionFill As Long
+    Dim headerFill As Long
+
+    inputFill = RGB(255, 242, 204)
+    sectionFill = RGB(221, 235, 247)
+    headerFill = RGB(242, 242, 242)
+
+    wsS.Cells.Font.Name = "Yu Gothic"
+    wsS.Cells.Font.Size = 10
+
+    With wsS.Range("A1:J1")
+        .Font.Size = 20
+        .Font.Bold = True
+        .Font.Color = RGB(31, 78, 121)
+        .Interior.Color = RGB(217, 225, 242)
+        .HorizontalAlignment = xlCenter
+        .VerticalAlignment = xlCenter
+    End With
+
+    With wsS.Range("C2:J2,A4:J4,A6:J6,A15:J15,H3:J3,A19:J19")
+        .Font.Bold = True
+        .Interior.Color = sectionFill
+        .VerticalAlignment = xlCenter
+    End With
+
+    With wsS.Range("B4:F4,B6:F6,H4")
+        .Font.Bold = True
+        .Interior.Color = headerFill
+        .HorizontalAlignment = xlCenter
+    End With
+
+    With wsS.Range("A2:A3,A7:A13,A16")
+        .Font.Bold = True
+        .HorizontalAlignment = xlCenter
+        .VerticalAlignment = xlCenter
+        .Interior.Color = headerFill
+    End With
+
+    With wsS.Range(SETTINGS_YEAR_CELL & "," & SETTINGS_MONTH_CELL & "," & _
+                   SETTINGS_STAFF_HEADER_RANGE & "," & SETTINGS_WORK_PATTERN_RANGE & "," & _
+                   SETTINGS_MONTHLY_CLOSE_RANGE & "," & SETTINGS_STAFF_MASTER_RANGE)
+        .Interior.Color = inputFill
+        .VerticalAlignment = xlCenter
+    End With
+
+    wsS.Range(SETTINGS_YEAR_CELL & ":" & SETTINGS_MONTH_CELL).HorizontalAlignment = xlCenter
+    wsS.Range(SETTINGS_STAFF_HEADER_RANGE).HorizontalAlignment = xlCenter
+    wsS.Range(SETTINGS_WORK_PATTERN_RANGE).HorizontalAlignment = xlCenter
+    wsS.Range(SETTINGS_MONTHLY_CLOSE_RANGE).HorizontalAlignment = xlCenter
+
+    With wsS.Range("A2:B3,B4:F5,A6:F13,A15:F16,H4:H24")
+        .Borders.LineStyle = xlContinuous
+        .Borders.Color = RGB(191, 191, 191)
+    End With
+
+    With wsS.Range("C3:J3,G4:J4,G6:J6,G16:J16,I4:J4,A20:J20")
+        .Font.Color = RGB(89, 89, 89)
+    End With
+
+End Sub
+
+Private Sub AddSettingsButton(ByVal wsS As Worksheet, ByVal shapeName As String, ByVal caption As String, _
+                              ByVal macroName As String, ByVal anchorCell As Range, _
+                              ByVal buttonWidth As Double, ByVal buttonHeight As Double, _
+                              ByVal fillColor As Long, ByVal fontColor As Long)
+
+    Dim btn As Shape
+    Set btn = wsS.Shapes.AddShape(msoShapeRoundedRectangle, anchorCell.Left, anchorCell.Top, buttonWidth, buttonHeight)
+
+    With btn
+        .Name = shapeName
+        .OnAction = macroName
+        .Fill.ForeColor.RGB = fillColor
+        .Line.ForeColor.RGB = fillColor
+        .TextFrame.Characters.Text = caption
+        .TextFrame.HorizontalAlignment = xlHAlignCenter
+        .TextFrame.VerticalAlignment = xlVAlignCenter
+        .TextFrame.Characters.Font.Bold = True
+        .TextFrame.Characters.Font.Size = 14
+        .TextFrame.Characters.Font.Color = fontColor
+        .Placement = xlMoveAndSize
+    End With
+
+End Sub
+
+Private Sub DeleteShapeIfExists(ByVal wsS As Worksheet, ByVal shapeName As String)
+
+    Dim shp As Shape
+
+    For Each shp In wsS.Shapes
+        If shp.Name = shapeName Then
+            shp.Delete
+            Exit For
+        End If
+    Next shp
 
 End Sub
 
