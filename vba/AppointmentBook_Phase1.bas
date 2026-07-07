@@ -68,10 +68,10 @@ Public Sub GenerateAppointmentBook_Phase4()
 End Sub
 
 Public Sub GenerateAppointmentBook_Phase5()
-    GenerateAppointmentBook_Phase5_WithOneDayPrintSettings
+    GenerateBook_Phase5_Print
 End Sub
 
-Public Sub GenerateAppointmentBook_Phase5_WithOneDayPrintSettings()
+Public Sub GenerateBook_Phase5_Print()
     GenerateAppointmentBookCore "Phase 5", True
 End Sub
 
@@ -175,7 +175,7 @@ Public Sub CreateAppointmentBookButton()
 
     DeleteShapeIfExists wsS, BUTTON_CREATE_APPOINTMENT
     AddSettingsButton wsS, BUTTON_CREATE_APPOINTMENT, "アポ帳を作成", _
-        "GenerateAppointmentBook_Phase5_WithOneDayPrintSettings", wsS.Range("A24"), 170, 42, _
+        "GenerateBook_Phase5_Print", wsS.Range("A24"), 170, 42, _
         RGB(47, 117, 181), RGB(255, 255, 255)
 
 End Sub
@@ -1609,7 +1609,7 @@ Public Sub CheckAppointmentBook_Phase1()
            "Options include 休, 午前のみ, and xx:xxまで." & vbCrLf & _
            "Staff mapping: B5->B, C5->D, D5->F, E5->I, F5->J" & vbCrLf & vbCrLf & _
            "Run setup macro first: SetupSettingsDropdowns" & vbCrLf & _
-           "Run generation macro: GenerateAppointmentBook_Phase5_WithOneDayPrintSettings", vbInformation
+           "Run generation macro: GenerateBook_Phase5_Print", vbInformation
     Exit Sub
 
 ErrorHandler:

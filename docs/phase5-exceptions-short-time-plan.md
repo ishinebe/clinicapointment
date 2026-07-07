@@ -193,7 +193,7 @@ DH2
 2. `SetupSettingsDropdowns` を実行する。
 3. `SetupExceptionsDateDropdowns` を実行する。
 4. `Settings` と `Exceptions` をプルダウン中心に設定する。
-5. `GenerateAppointmentBook_Phase5_WithOneDayPrintSettings` を実行する。
+5. `GenerateBook_Phase5_Print` を実行する。
 
 ---
 
