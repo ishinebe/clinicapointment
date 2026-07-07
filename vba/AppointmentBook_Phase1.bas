@@ -3,7 +3,7 @@ Option Explicit
 '============================================================
 ' ClinicAppointment
 ' Module: AppointmentBook
-' Version: 2026.07.07-Phase5B-staff-monthly-close
+' Version: 2026.07.07-Phase5C-weekday-staff-short-time
 '
 ' Important:
 ' - One-day template range is fixed to Template!A1:J46.
@@ -16,10 +16,11 @@ Option Explicit
 ' - Template column H is intentionally treated as a spacer/narrow column.
 '   DH headers are written to I and J.
 ' - Settings dropdowns can be created with SetupSettingsDropdowns.
-' - In work-pattern cells, blank means working. Select only休 when needed.
+' - In work-pattern cells, blank means normal work, 休 means off,
+'   早上がり means use the weekday-specific time matrix.
 ' - Settings!B16:F16 visually represents a clinic-wide close-time override.
 '   The stored value is read from Settings!B16.
-' - Settings!B18:F18 represents staff-specific monthly close-time overrides.
+' - Settings!B18:F24 represents weekday-specific staff short-time overrides.
 '============================================================
 
 Private Const SHEET_TEMPLATE As String = "Template"
@@ -37,8 +38,10 @@ Private Const SETTINGS_WEEKDAY_LABEL_RANGE As String = "A7:A13"
 Private Const SETTINGS_STAFF_MASTER_RANGE As String = "H5:H24"
 Private Const SETTINGS_MONTHLY_CLOSE_CELL As String = "B16"
 Private Const SETTINGS_MONTHLY_CLOSE_RANGE As String = "B16:F16"
-Private Const SETTINGS_STAFF_MONTHLY_CLOSE_FIRST_CELL As String = "B18"
-Private Const SETTINGS_STAFF_MONTHLY_CLOSE_RANGE As String = "B18:F18"
+Private Const SETTINGS_STAFF_WEEKDAY_CLOSE_FIRST_CELL As String = "B18"
+Private Const SETTINGS_STAFF_WEEKDAY_CLOSE_RANGE As String = "B18:F24"
+Private Const SETTINGS_STAFF_WEEKDAY_CLOSE_HEADER_RANGE As String = "B17:F17"
+Private Const SETTINGS_STAFF_WEEKDAY_LABEL_RANGE As String = "A18:A24"
 
 Private Const TEMPLATE_ONE_DAY_RANGE As String = "A1:J46"
 Private Const BLOCK_GAP_ROWS As Long = 2
@@ -90,7 +93,7 @@ Public Sub SetupSettingsDropdowns()
     ApplyStaffHeaderDropdowns wsS
     ApplyWorkPatternDropdowns wsS
     ApplyMonthlyCloseDropdown wsS
-    ApplyStaffMonthlyCloseDropdowns wsS
+    ApplyStaffWeekdayCloseDropdowns wsS
 
     Application.ScreenUpdating = True
 
@@ -98,7 +101,7 @@ Public Sub SetupSettingsDropdowns()
            "Staff headers: Settings!B5:F5" & vbCrLf & _
            "Work pattern: Settings!B7:F13" & vbCrLf & _
            "Clinic monthly close: Settings!B16:F16" & vbCrLf & _
-           "Staff monthly close: Settings!B18:F18" & vbCrLf & _
+           "Staff weekday short-time: Settings!B18:F24" & vbCrLf & _
            "Blank = normal, select values only when needed.", vbInformation
     Exit Sub
 
@@ -123,8 +126,33 @@ Private Sub ApplySettingsLabels(ByVal wsS As Worksheet)
     wsS.Range("A16").Value = "医院全体の当月原則終了時刻"
     PrepareMonthlyCloseVisualRange wsS
 
-    wsS.Range("A18").Value = "スタッフ別の当月終了時刻"
+    wsS.Range("A17").Value = "早上がり時刻"
+    CopyStaffHeadersToWeekdayCloseHeader wsS
+    ApplyWeekdayLabelsForStaffClose wsS
+
     wsS.Range("H4").Value = "担当者マスター"
+
+End Sub
+
+Private Sub CopyStaffHeadersToWeekdayCloseHeader(ByVal wsS As Worksheet)
+
+    Dim i As Long
+    For i = 0 To STAFF_SLOT_COUNT - 1
+        wsS.Range(SETTINGS_STAFF_WEEKDAY_CLOSE_HEADER_RANGE).Cells(1, i + 1).Value = _
+            wsS.Range(SETTINGS_STAFF_HEADER_RANGE).Cells(1, i + 1).Value
+    Next i
+
+End Sub
+
+Private Sub ApplyWeekdayLabelsForStaffClose(ByVal wsS As Worksheet)
+
+    wsS.Range("A18").Value = "月"
+    wsS.Range("A19").Value = "火"
+    wsS.Range("A20").Value = "水"
+    wsS.Range("A21").Value = "木"
+    wsS.Range("A22").Value = "金"
+    wsS.Range("A23").Value = "土"
+    wsS.Range("A24").Value = "日"
 
 End Sub
 
@@ -215,13 +243,13 @@ Private Sub ApplyWorkPatternDropdowns(ByVal wsS As Worksheet)
     With wsS.Range(SETTINGS_WORK_PATTERN_RANGE).Validation
         .Delete
         .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Operator:=xlBetween, _
-             Formula1:="休"
+             Formula1:="休,早上がり"
         .IgnoreBlank = True
         .InCellDropdown = True
         .InputTitle = "勤務パターン"
-        .InputMessage = "通常は空欄のままです。休みの場合だけ休を選択してください。"
+        .InputMessage = "通常は空欄。休みは休、早上がりは早上がりを選び、下の早上がり時刻も選択してください。"
         .ErrorTitle = "入力できません"
-        .ErrorMessage = "休を選択するか、空欄のままにしてください。"
+        .ErrorMessage = "休または早上がりを選択するか、空欄のままにしてください。"
     End With
 
 End Sub
@@ -242,16 +270,16 @@ Private Sub ApplyMonthlyCloseDropdown(ByVal wsS As Worksheet)
 
 End Sub
 
-Private Sub ApplyStaffMonthlyCloseDropdowns(ByVal wsS As Worksheet)
+Private Sub ApplyStaffWeekdayCloseDropdowns(ByVal wsS As Worksheet)
 
-    With wsS.Range(SETTINGS_STAFF_MONTHLY_CLOSE_RANGE).Validation
+    With wsS.Range(SETTINGS_STAFF_WEEKDAY_CLOSE_RANGE).Validation
         .Delete
         .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Operator:=xlBetween, _
              Formula1:="16:00,16:30,17:00,17:30,18:00,18:30,19:00"
         .IgnoreBlank = True
         .InCellDropdown = True
-        .InputTitle = "スタッフ別の当月終了時刻"
-        .InputMessage = "通常は空欄のままです。そのスタッフだけ当月中ずっと時短の場合に終了時刻を選択してください。"
+        .InputTitle = "早上がり時刻"
+        .InputMessage = "上の勤務パターンで早上がりを選んだ曜日・スタッフだけ、終了時刻を選択してください。"
         .ErrorTitle = "入力できません"
         .ErrorMessage = "プルダウンから終了時刻を選択するか、空欄のままにしてください。"
     End With
@@ -419,7 +447,7 @@ Private Sub ApplyOperationalInfo(ByVal wsO As Worksheet, ByVal wsS As Worksheet,
     ReplaceTemplateDateIfPossible wsO, templateRange, pasteRow, currentDate
     ReplaceStaffHeadersIfConfigured wsO, wsS, templateRange, pasteRow
     ApplyStaffWorkPatternIfConfigured wsO, wsS, templateRange, pasteRow, currentDate
-    ApplyStaffMonthlyCloseIfConfigured wsO, wsS, templateRange, pasteRow
+    ApplyStaffWeekdayCloseIfConfigured wsO, wsS, templateRange, pasteRow, currentDate
     ApplyClinicHoursInBlock wsO, wsS, templateRange, pasteRow, currentDate
 
 End Sub
@@ -483,10 +511,9 @@ End Sub
 
 Private Sub ApplyStaffWorkPatternIfConfigured(ByVal wsO As Worksheet, ByVal wsS As Worksheet, ByVal templateRange As Range, ByVal pasteRow As Long, ByVal currentDate As Date)
 
-    ' Optional weekly work pattern:
     ' Settings!B7:F13 corresponds to Monday-Sunday x staff slots.
-    ' Blank means working.
-    ' Select only 休 when the staff member is unavailable for that weekday.
+    ' Blank means normal work. 休 means unavailable. 早上がり is handled by
+    ' ApplyStaffWeekdayCloseIfConfigured.
 
     If Not HasWorkPatternSettings(wsS) Then
         Exit Sub
@@ -534,25 +561,44 @@ Private Function IsStaffOffValue(ByVal valueText As String) As Boolean
 
 End Function
 
-Private Sub ApplyStaffMonthlyCloseIfConfigured(ByVal wsO As Worksheet, ByVal wsS As Worksheet, ByVal templateRange As Range, ByVal pasteRow As Long)
+Private Function IsStaffEarlyLeaveValue(ByVal valueText As String) As Boolean
 
-    If WorksheetFunction.CountA(wsS.Range(SETTINGS_STAFF_MONTHLY_CLOSE_RANGE)) = 0 Then
+    Dim normalized As String
+    normalized = LCase$(Trim$(valueText))
+
+    IsStaffEarlyLeaveValue = (normalized = "早上がり" Or _
+                              normalized = "早上り" Or _
+                              normalized = "時短" Or _
+                              normalized = "short")
+
+End Function
+
+Private Sub ApplyStaffWeekdayCloseIfConfigured(ByVal wsO As Worksheet, ByVal wsS As Worksheet, ByVal templateRange As Range, ByVal pasteRow As Long, ByVal currentDate As Date)
+
+    If WorksheetFunction.CountA(wsS.Range(SETTINGS_WORK_PATTERN_RANGE)) = 0 Then
         Exit Sub
     End If
+
+    Dim weekdayIndexMondayFirst As Long
+    weekdayIndexMondayFirst = Weekday(currentDate, vbMonday)
 
     Dim targetCols(1 To STAFF_SLOT_COUNT) As Long
     GetStaffTargetColumns targetCols
 
     Dim i As Long
+    Dim statusValue As String
     Dim closeValue As String
     Dim closeTime As Date
 
     For i = 1 To STAFF_SLOT_COUNT
-        closeValue = Trim$(CStr(wsS.Range(SETTINGS_STAFF_MONTHLY_CLOSE_FIRST_CELL).Offset(0, i - 1).Value))
-        If Len(closeValue) > 0 Then
-            If TryParseTimeText(closeValue, closeTime) Then
-                ShadeStaffSlotFromTime wsO, pasteRow, targetCols(i), closeTime
-                MarkStaffHeaderUntil wsO, pasteRow, targetCols(i), Format$(closeTime, "h:mm")
+        statusValue = Trim$(CStr(wsS.Range(SETTINGS_WORK_PATTERN_FIRST_CELL).Offset(weekdayIndexMondayFirst - 1, i - 1).Value))
+        If IsStaffEarlyLeaveValue(statusValue) Then
+            closeValue = Trim$(CStr(wsS.Range(SETTINGS_STAFF_WEEKDAY_CLOSE_FIRST_CELL).Offset(weekdayIndexMondayFirst - 1, i - 1).Value))
+            If Len(closeValue) > 0 Then
+                If TryParseTimeText(closeValue, closeTime) Then
+                    ShadeStaffSlotFromTime wsO, pasteRow, targetCols(i), closeTime
+                    MarkStaffHeaderUntil wsO, pasteRow, targetCols(i), Format$(closeTime, "h:mm")
+                End If
             End If
         End If
     Next i
@@ -985,11 +1031,10 @@ Public Sub CheckAppointmentBook_Phase1()
            "Settings!B5:F5 = Staff headers" & vbCrLf & _
            "Settings!B7:F13 = Weekly staff work pattern" & vbCrLf & _
            "Settings!B16:F16 = Clinic monthly close time" & vbCrLf & _
-           "Settings!B18:F18 = Staff monthly close time" & vbCrLf & _
+           "Settings!B18:F24 = Staff weekday short-time close time" & vbCrLf & _
            "Settings!H5:H24 = Staff master" & vbCrLf & _
-           "Blank in B7:F13 means working; select 休 only when needed." & vbCrLf & _
-           "Blank in B16:F16 means normal clinic hours." & vbCrLf & _
-           "Blank in B18:F18 means normal staff hours." & vbCrLf & _
+           "Blank in B7:F13 means normal work; select 休 or 早上がり only when needed." & vbCrLf & _
+           "If 早上がり is selected, enter the time in B18:F24." & vbCrLf & _
            "Staff mapping: B5->B, C5->D, D5->F, E5->I, F5->J" & vbCrLf & vbCrLf & _
            "Run setup macro first: SetupSettingsDropdowns" & vbCrLf & _
            "Run generation macro: GenerateAppointmentBook_Phase5", vbInformation
