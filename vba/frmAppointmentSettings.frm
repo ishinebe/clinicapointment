@@ -93,16 +93,16 @@ Private Sub BuildForm()
     AddNoteLabel "lblWorkNote", "空欄は通常勤務です。毎週同じ休みや早上がりだけ選びます。臨時の休みは次の手順で入力します。", 28, 288, 620, 16
     AddWorkPatternGrid 28, 316
 
-    AddStepHeader "lblTemporary", "4. 臨時予定の確認・編集", 16, 484, 335
-    AddNoteLabel "lblTemporaryNote", "休診、早上がり、スタッフ休みなど、その月だけの予定を確認します。", 28, 510, 300, 30
-    Set btnRefreshExceptionDates = AddButton("btnRefreshExceptionDates", "臨時予定を確認・編集", 36, 544, 150, 28)
-
-    AddStepHeader "lblMonthlyClose", "医院全体の当月終了時刻", 370, 484, 335
-    AddNoteLabel "lblMonthlyCloseNote", "その月だけ医院全体を早く閉める場合に選びます。通常月は空欄です。", 382, 510, 300, 30
-    Set cmbMonthlyClose = AddCombo("cmbMonthlyClose", 386, 544, 92, 20)
+    AddStepHeader "lblMonthlyClose", "4. 医院全体の当月終了時刻", 16, 484, 335
+    AddNoteLabel "lblMonthlyCloseNote", "その月だけ医院全体を早く閉める場合に選びます。通常月は空欄です。", 28, 510, 300, 30
+    Set cmbMonthlyClose = AddCombo("cmbMonthlyClose", 32, 544, 92, 20)
     AddMonthlyCloseItems cmbMonthlyClose
 
-    AddStepHeader "lblCreate", "5. アポ帳作成", 16, 584, 690
+    AddStepHeader "lblTemporary", "5. 臨時予定の確認・編集", 370, 484, 335
+    AddNoteLabel "lblTemporaryNote", "休診、早上がり、スタッフ休みなど、その月だけの予定を確認します。", 382, 510, 300, 30
+    Set btnRefreshExceptionDates = AddButton("btnRefreshExceptionDates", "臨時予定を確認・編集", 390, 544, 150, 28)
+
+    AddStepHeader "lblCreate", "6. アポ帳作成", 16, 584, 690
     Set btnCreate = AddButton("btnCreate", "この内容でアポ帳を作成", 34, 616, 190, 32)
     Set btnSave = AddButton("btnSave", "保存して閉じる", 242, 616, 130, 32)
     Set btnClose = AddButton("btnClose", "閉じる", 390, 616, 90, 32)
