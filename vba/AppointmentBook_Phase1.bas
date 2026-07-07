@@ -745,10 +745,15 @@ End Sub
 
 Private Sub ApplyOperationalInfo(ByVal wsO As Worksheet, ByVal wsS As Worksheet, ByVal templateRange As Range, ByVal pasteRow As Long, ByVal currentDate As Date)
 
+    Dim hasClinicException As Boolean
+    Dim hasStaffException(1 To STAFF_SLOT_COUNT) As Boolean
+
+    LoadExceptionOverridesForDate currentDate, hasClinicException, hasStaffException
+
     ReplaceTemplateDateIfPossible wsO, templateRange, pasteRow, currentDate
     ReplaceStaffHeadersIfConfigured wsO, wsS, pasteRow
-    ApplyStaffWorkPatternIfConfigured wsO, wsS, pasteRow, currentDate
-    ApplyClinicHoursInBlock wsO, wsS, templateRange, pasteRow, currentDate
+    ApplyStaffWorkPatternIfConfigured wsO, wsS, pasteRow, currentDate, hasClinicException, hasStaffException
+    ApplyClinicHoursInBlock wsO, wsS, templateRange, pasteRow, currentDate, hasClinicException, hasStaffException
     ApplyExceptions wsO, templateRange, pasteRow, currentDate
 
 End Sub
@@ -831,8 +836,10 @@ Private Function FormatStaffHeaderForOutput(ByVal slotIndex As Long, ByVal staff
 
 End Function
 
-Private Sub ApplyStaffWorkPatternIfConfigured(ByVal wsO As Worksheet, ByVal wsS As Worksheet, ByVal pasteRow As Long, ByVal currentDate As Date)
+Private Sub ApplyStaffWorkPatternIfConfigured(ByVal wsO As Worksheet, ByVal wsS As Worksheet, ByVal pasteRow As Long, ByVal currentDate As Date, _
+                                              ByVal hasClinicException As Boolean, ByRef hasStaffException() As Boolean)
 
+    If hasClinicException Then Exit Sub
     If WorksheetFunction.CountA(wsS.Range(SETTINGS_WORK_PATTERN_RANGE)) = 0 Then Exit Sub
 
     Dim weekdayIndexMondayFirst As Long
@@ -846,6 +853,8 @@ Private Sub ApplyStaffWorkPatternIfConfigured(ByVal wsO As Worksheet, ByVal wsS 
     Dim closeTime As Date
 
     For i = 1 To STAFF_SLOT_COUNT
+        If hasStaffException(i) Then GoTo NextStaffSlot
+
         statusValue = Trim$(CStr(wsS.Range(SETTINGS_WORK_PATTERN_FIRST_CELL).Offset(weekdayIndexMondayFirst - 1, i - 1).Value))
 
         If IsStaffOffValue(statusValue) Then
@@ -855,6 +864,8 @@ Private Sub ApplyStaffWorkPatternIfConfigured(ByVal wsO As Worksheet, ByVal wsS 
             ShadeStaffSlotFromTime wsO, pasteRow, targetCols(i), closeTime
             MarkStaffHeaderUntil wsO, pasteRow, targetCols(i), Format$(closeTime, "h:mm")
         End If
+
+NextStaffSlot:
     Next i
 
 End Sub
@@ -961,24 +972,40 @@ End Sub
 
 Private Function TryGetExceptionTargetColumn(ByVal targetText As String, ByRef targetCol As Long) As Boolean
 
+    Dim slotIndex As Long
+    Dim targetCols(1 To STAFF_SLOT_COUNT) As Long
+
+    If Not TryGetExceptionTargetSlot(targetText, slotIndex) Then
+        TryGetExceptionTargetColumn = False
+        Exit Function
+    End If
+
+    GetStaffTargetColumns targetCols
+    targetCol = targetCols(slotIndex)
+    TryGetExceptionTargetColumn = True
+
+End Function
+
+Private Function TryGetExceptionTargetSlot(ByVal targetText As String, ByRef slotIndex As Long) As Boolean
+
     Select Case Trim$(targetText)
         Case "Dr1"
-            targetCol = STAFF_COL_1
-            TryGetExceptionTargetColumn = True
+            slotIndex = 1
+            TryGetExceptionTargetSlot = True
         Case "Dr2"
-            targetCol = STAFF_COL_2
-            TryGetExceptionTargetColumn = True
+            slotIndex = 2
+            TryGetExceptionTargetSlot = True
         Case "予備", "予備枠"
-            targetCol = STAFF_COL_3
-            TryGetExceptionTargetColumn = True
+            slotIndex = 3
+            TryGetExceptionTargetSlot = True
         Case "DH1"
-            targetCol = STAFF_COL_4
-            TryGetExceptionTargetColumn = True
+            slotIndex = 4
+            TryGetExceptionTargetSlot = True
         Case "DH2"
-            targetCol = STAFF_COL_5
-            TryGetExceptionTargetColumn = True
+            slotIndex = 5
+            TryGetExceptionTargetSlot = True
         Case Else
-            TryGetExceptionTargetColumn = False
+            TryGetExceptionTargetSlot = False
     End Select
 
 End Function
@@ -988,6 +1015,60 @@ Private Function IsWholeClinicExceptionTarget(ByVal targetText As String) As Boo
     IsWholeClinicExceptionTarget = (Trim$(targetText) = "全体")
 
 End Function
+
+Private Sub LoadExceptionOverridesForDate(ByVal currentDate As Date, ByRef hasClinicException As Boolean, ByRef hasStaffException() As Boolean)
+
+    hasClinicException = False
+
+    Dim i As Long
+    For i = 1 To STAFF_SLOT_COUNT
+        hasStaffException(i) = False
+    Next i
+
+    If Not SheetExists(SHEET_EXCEPTIONS) Then Exit Sub
+
+    Dim wsE As Worksheet
+    Set wsE = ThisWorkbook.Worksheets(SHEET_EXCEPTIONS)
+
+    Dim lastRow As Long
+    lastRow = wsE.Cells(wsE.Rows.Count, "A").End(xlUp).Row
+
+    If lastRow < 2 Then Exit Sub
+
+    Dim r As Long
+    Dim exceptionDate As Date
+    Dim exceptionType As String
+    Dim targetText As String
+    Dim slotIndex As Long
+
+    For r = 2 To lastRow
+        If IsDate(wsE.Cells(r, "A").Value) Then
+            exceptionDate = DateValue(wsE.Cells(r, "A").Value)
+            If exceptionDate = currentDate Then
+                exceptionType = Trim$(CStr(wsE.Cells(r, "B").Value))
+                targetText = Trim$(CStr(wsE.Cells(r, "C").Value))
+
+                Select Case exceptionType
+                    Case "休診"
+                        If targetText = "" Or IsWholeClinicExceptionTarget(targetText) Then
+                            hasClinicException = True
+                        End If
+
+                    Case "時短診療"
+                        If IsWholeClinicExceptionTarget(targetText) Then
+                            hasClinicException = True
+                        End If
+
+                    Case "休み", "時短勤務"
+                        If TryGetExceptionTargetSlot(targetText, slotIndex) Then
+                            hasStaffException(slotIndex) = True
+                        End If
+                End Select
+            End If
+        End If
+    Next r
+
+End Sub
 
 Private Sub ApplyExceptions(ByVal wsO As Worksheet, ByVal templateRange As Range, ByVal pasteRow As Long, ByVal currentDate As Date)
 
@@ -1138,7 +1219,10 @@ Private Function ContainsDateMarker(ByVal valueText As String) As Boolean
 
 End Function
 
-Private Sub ApplyClinicHoursInBlock(ByVal wsO As Worksheet, ByVal wsS As Worksheet, ByVal templateRange As Range, ByVal pasteRow As Long, ByVal currentDate As Date)
+Private Sub ApplyClinicHoursInBlock(ByVal wsO As Worksheet, ByVal wsS As Worksheet, ByVal templateRange As Range, ByVal pasteRow As Long, ByVal currentDate As Date, _
+                                    ByVal hasClinicException As Boolean, ByRef hasStaffException() As Boolean)
+
+    If hasClinicException Then Exit Sub
 
     Dim startRow As Long
     Dim endRow As Long
@@ -1151,9 +1235,21 @@ Private Sub ApplyClinicHoursInBlock(ByVal wsO As Worksheet, ByVal wsS As Workshe
     Dim weekdayValue As Long
     weekdayValue = Weekday(currentDate, vbSunday)
 
+    Dim skipFirstCols(1 To STAFF_SLOT_COUNT) As Long
+    Dim skipLastCols(1 To STAFF_SLOT_COUNT) As Long
+
+    BuildStaffExceptionColumnSpans wsO, pasteRow, hasStaffException, skipFirstCols, skipLastCols
+
     If IsClosedWeekday(weekdayValue) Then
-        ShadeRows wsO, startRow, endRow, templateRange.Column, lastCol
-        PutClosedLabel wsO, pasteRow, templateRange
+        If HasAnyStaffException(hasStaffException) Then
+            Dim closedRow As Long
+            For closedRow = startRow To endRow
+                ShadeClinicHourRow wsO, closedRow, templateRange.Column, lastCol, skipFirstCols, skipLastCols
+            Next closedRow
+        Else
+            ShadeRows wsO, startRow, endRow, templateRange.Column, lastCol
+            PutClosedLabel wsO, pasteRow, templateRange
+        End If
         Exit Sub
     End If
 
@@ -1166,12 +1262,76 @@ Private Sub ApplyClinicHoursInBlock(ByVal wsO As Worksheet, ByVal wsS As Workshe
     For r = startRow To endRow
         If TryGetTimeFromCell(wsO.Cells(r, NEW_TIME_COL), slotTime) Then
             If slotTime >= closeTime Then
-                ShadeRows wsO, r, r, templateRange.Column, lastCol
+                ShadeClinicHourRow wsO, r, templateRange.Column, lastCol, skipFirstCols, skipLastCols
             End If
         End If
     Next r
 
 End Sub
+
+Private Function HasAnyStaffException(ByRef hasStaffException() As Boolean) As Boolean
+
+    Dim i As Long
+
+    For i = 1 To STAFF_SLOT_COUNT
+        If hasStaffException(i) Then
+            HasAnyStaffException = True
+            Exit Function
+        End If
+    Next i
+
+    HasAnyStaffException = False
+
+End Function
+
+Private Sub BuildStaffExceptionColumnSpans(ByVal wsO As Worksheet, ByVal pasteRow As Long, ByRef hasStaffException() As Boolean, _
+                                           ByRef skipFirstCols() As Long, ByRef skipLastCols() As Long)
+
+    Dim targetCols(1 To STAFF_SLOT_COUNT) As Long
+    Dim i As Long
+
+    GetStaffTargetColumns targetCols
+
+    For i = 1 To STAFF_SLOT_COUNT
+        skipFirstCols(i) = 0
+        skipLastCols(i) = 0
+
+        If hasStaffException(i) Then
+            GetStaffSlotColumnSpan wsO, pasteRow, targetCols(i), skipFirstCols(i), skipLastCols(i)
+        End If
+    Next i
+
+End Sub
+
+Private Sub ShadeClinicHourRow(ByVal ws As Worksheet, ByVal rowNumber As Long, ByVal firstCol As Long, ByVal lastCol As Long, _
+                               ByRef skipFirstCols() As Long, ByRef skipLastCols() As Long)
+
+    Dim c As Long
+
+    For c = firstCol To lastCol
+        If Not IsColumnInStaffExceptionSpan(c, skipFirstCols, skipLastCols) Then
+            ShadeRows ws, rowNumber, rowNumber, c, c
+        End If
+    Next c
+
+End Sub
+
+Private Function IsColumnInStaffExceptionSpan(ByVal columnNumber As Long, ByRef skipFirstCols() As Long, ByRef skipLastCols() As Long) As Boolean
+
+    Dim i As Long
+
+    For i = 1 To STAFF_SLOT_COUNT
+        If skipFirstCols(i) > 0 Then
+            If columnNumber >= skipFirstCols(i) And columnNumber <= skipLastCols(i) Then
+                IsColumnInStaffExceptionSpan = True
+                Exit Function
+            End If
+        End If
+    Next i
+
+    IsColumnInStaffExceptionSpan = False
+
+End Function
 
 Private Function GetEffectiveClinicCloseTime(ByVal wsS As Worksheet, ByVal weekdayValue As Long) As Date
 
