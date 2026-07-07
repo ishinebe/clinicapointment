@@ -152,7 +152,7 @@ UserFormは `Settings` を置き換えない。あくまで `Settings!B2/B3/B5:F
 - [x] 「例外日付を更新」で年月を保存後に `SetupExceptionsDateDropdowns` を実行する。
 - [x] `Settings` シートに「設定フォームを開く」ボタンを追加する。
 - [x] Exceptionsの詳細入力は既存シート運用を維持する。
-- [x] VBEインポート互換性のため、`frmAppointmentSettings.frm` はASCII英数字中心で管理する。
+- [x] `.frm` 直接インポートに失敗する場合は、VBE上で空のUserFormを作成し、`Option Explicit` 以降のコードを貼り付ける手順を正式運用として記載する。
 
 ### 通常の使用手順
 

@@ -41,7 +41,7 @@ UserForm化フェーズ。
 
 現在は、受付・歯科助手でも迷わず操作できるように、`frmAppointmentSettings` を月次アポ帳作成フォームとして追加しています。UserFormは `Settings` シートを置き換えるものではなく、既存セルへ入力する補助画面です。既存ロジックとの互換性維持のため、内部参照セルである `B2`、`B3`、`B5:F5`、`B7:F13`、`B16:F16`、`H5:H24` は変更しません。
 
-VBEへのインポート互換性を優先し、`frmAppointmentSettings.frm` はASCII英数字中心で管理しています。日本語UIは後続フェーズで文字コード方針を決めてから追加します。
+`.frm` の直接インポートで文字コードや形式の問題が出る場合は、VBE上で空のUserFormを作成し、`frmAppointmentSettings.frm` の `Option Explicit` 以降をコード画面へ貼り付けて使用します。
 
 ## 通常の使用手順
 
@@ -52,3 +52,17 @@ VBEへのインポート互換性を優先し、`frmAppointmentSettings.frm` は
 5. フォームの「アポ帳を作成」ボタンを押す。
 
 従来通り、`Settings` シートを直接編集して既存ボタンから作成する運用も残しています。
+
+## UserFormの作成手順
+
+`frmAppointmentSettings.frm` の直接インポートに失敗する場合は、VBE上でUserFormを手作成します。
+
+1. VBEで「挿入」→「ユーザーフォーム」を選択する。
+2. 作成されたUserFormのオブジェクト名を `frmAppointmentSettings` に変更する。
+3. GitHubの `vba/frmAppointmentSettings.frm` を開く。
+4. `Option Explicit` 以降のVBAコード部分をコピーする。
+5. VBE上の `frmAppointmentSettings` のコード画面へ貼り付ける。
+6. `AppointmentBook_Phase1.bas` 側に `ShowAppointmentSettingsForm` があることを確認する。
+7. `Alt + F8` で `ShowAppointmentSettingsForm` を実行し、フォームが開くことを確認する。
+
+`.frm` 先頭の `VERSION` / `Begin VB.UserForm` / `Attribute` 行は貼り付けません。フォーム部品はコードで動的生成するため、手配置は不要です。
