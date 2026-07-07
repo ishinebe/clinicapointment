@@ -68,7 +68,11 @@ Public Sub GenerateAppointmentBook_Phase4()
 End Sub
 
 Public Sub GenerateAppointmentBook_Phase5()
-    GenerateAppointmentBookCore "Phase 5"
+    GenerateAppointmentBook_Phase5_WithOneDayPrintSettings
+End Sub
+
+Public Sub GenerateAppointmentBook_Phase5_WithOneDayPrintSettings()
+    GenerateAppointmentBookCore "Phase 5", True
 End Sub
 
 Public Sub SetupSettingsDropdowns()
@@ -171,7 +175,7 @@ Public Sub CreateAppointmentBookButton()
 
     DeleteShapeIfExists wsS, BUTTON_CREATE_APPOINTMENT
     AddSettingsButton wsS, BUTTON_CREATE_APPOINTMENT, "アポ帳を作成", _
-        "GenerateAppointmentBook_Phase5", wsS.Range("A24"), 170, 42, _
+        "GenerateAppointmentBook_Phase5_WithOneDayPrintSettings", wsS.Range("A24"), 170, 42, _
         RGB(47, 117, 181), RGB(255, 255, 255)
 
 End Sub
@@ -603,7 +607,7 @@ Private Sub SetupExceptionsSheet()
 
 End Sub
 
-Private Sub GenerateAppointmentBookCore(ByVal phaseName As String)
+Private Sub GenerateAppointmentBookCore(ByVal phaseName As String, Optional ByVal applyOneDayPageBreaks As Boolean = False)
 
     On Error GoTo ErrorHandler
 
@@ -675,6 +679,9 @@ Private Sub GenerateAppointmentBookCore(ByVal phaseName As String)
     Next d
 
     CopyTemplatePrintSettings wsT, wsO, templateRange, pasteRow - BLOCK_GAP_ROWS - 1
+    If applyOneDayPageBreaks Then
+        ApplyOneDayPageBreaks wsO, templateRange, daysInMonth
+    End If
 
     wsO.Activate
 
@@ -712,6 +719,25 @@ Private Sub ClearOutput(ByVal ws As Worksheet)
     On Error Resume Next
     ws.ResetAllPageBreaks
     On Error GoTo 0
+End Sub
+
+Private Sub ApplyOneDayPageBreaks(ByVal ws As Worksheet, ByVal templateRange As Range, ByVal daysInMonth As Long)
+
+    Dim blockHeight As Long
+    Dim d As Long
+    Dim breakRow As Long
+
+    blockHeight = templateRange.Rows.Count + BLOCK_GAP_ROWS
+
+    On Error Resume Next
+    ws.ResetAllPageBreaks
+    On Error GoTo 0
+
+    For d = 2 To daysInMonth
+        breakRow = 1 + ((d - 1) * blockHeight)
+        ws.HPageBreaks.Add Before:=ws.Cells(breakRow, templateRange.Column)
+    Next d
+
 End Sub
 
 Private Sub CopyTemplateBlock(ByVal wsT As Worksheet, ByVal wsO As Worksheet, ByVal templateRange As Range, ByVal pasteRow As Long)
@@ -1424,6 +1450,11 @@ Private Sub ShadeRows(ByVal ws As Worksheet, ByVal firstRow As Long, ByVal lastR
         .PatternColor = RGB(217, 217, 217)
     End With
 
+    With ws.Range(ws.Cells(firstRow, firstCol), ws.Cells(firstRow, lastCol)).Borders(xlEdgeTop)
+        .LineStyle = xlContinuous
+        .Weight = xlThick
+    End With
+
 End Sub
 
 Private Sub PutClosedLabel(ByVal ws As Worksheet, ByVal pasteRow As Long, ByVal templateRange As Range)
@@ -1578,7 +1609,7 @@ Public Sub CheckAppointmentBook_Phase1()
            "Options include 休, 午前のみ, and xx:xxまで." & vbCrLf & _
            "Staff mapping: B5->B, C5->D, D5->F, E5->I, F5->J" & vbCrLf & vbCrLf & _
            "Run setup macro first: SetupSettingsDropdowns" & vbCrLf & _
-           "Run generation macro: GenerateAppointmentBook_Phase5", vbInformation
+           "Run generation macro: GenerateAppointmentBook_Phase5_WithOneDayPrintSettings", vbInformation
     Exit Sub
 
 ErrorHandler:

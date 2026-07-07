@@ -428,7 +428,7 @@ Private Sub btnCreate_Click()
 
     If SaveSettings(False, False) Then
         Me.Hide
-        GenerateAppointmentBook_Phase5
+        GenerateAppointmentBook_Phase5_WithOneDayPrintSettings
         Unload Me
     End If
 

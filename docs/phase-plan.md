@@ -120,7 +120,7 @@ Exceptions、祝日、臨時休診、PDF出力、集計機能を追加する。
 - [x] 入力セルに薄い色を付け、見出し・説明文・罫線・列幅を整える。
 - [x] `B5:F5`、`B7:F13`、`B16:F16` の既存プルダウンを維持する。
 - [x] `H5:H24` を担当者マスターとして分かりやすく表示する。
-- [x] `GenerateAppointmentBook_Phase5` を実行する「アポ帳を作成」ボタンを配置する。
+- [x] `GenerateAppointmentBook_Phase5_WithOneDayPrintSettings` を実行する「アポ帳を作成」ボタンを配置する。
 - [x] `SetupExceptionsDateDropdowns` を実行する「日付候補を更新」ボタンを配置する。
 - [x] セットアップを複数回実行してもボタンが重複しないようにする。
 
@@ -148,7 +148,7 @@ UserFormは `Settings` を置き換えない。あくまで `Settings!B2/B3/B5:F
 - [x] 作成年月、担当者、曜日別勤務パターン、医院全体の当月終了時刻をフォームで編集できる。
 - [x] フォーム起動時に `Settings` の既存値を読み込む。
 - [x] 「設定を保存」でフォームの値を `Settings` へ書き戻す。
-- [x] 「アポ帳を作成」で保存後に `GenerateAppointmentBook_Phase5` を実行する。
+- [x] 「アポ帳を作成」で保存後に `GenerateAppointmentBook_Phase5_WithOneDayPrintSettings` を実行する。
 - [x] 「臨時予定を編集」で年月を保存後に日付候補を更新し、臨時予定フォームを開く。
 - [x] `Settings` シートに「設定フォームを開く」ボタンを追加する。
 - [x] Phase 7 時点では臨時予定の詳細入力は既存シート運用を維持する。

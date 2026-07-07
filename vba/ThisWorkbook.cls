@@ -13,7 +13,7 @@ Private Sub Workbook_Open()
 
     On Error GoTo ErrorHandler
 
-    ShowAppointmentSettingsForm
+    Application.OnTime EarliestTime:=Now + TimeSerial(0, 0, 1), Procedure:="ShowAppointmentSettingsForm"
     Exit Sub
 
 ErrorHandler:

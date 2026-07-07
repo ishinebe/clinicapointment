@@ -122,4 +122,4 @@ ApplyShadeStartTopBordersToOutput
 
 `frmTemporarySchedule.frm` も同じ手順で作成できます。UserFormのオブジェクト名を `frmTemporarySchedule` に変更し、`vba/frmTemporarySchedule.frm` の `Option Explicit` 以降を貼り付けます。
 
-起動時にフォームを自動表示する場合は、VBEの `ThisWorkbook` コード画面へ `vba/ThisWorkbook.cls` の `Option Explicit` 以降を貼り付けます。`Workbook_Open` が `ShowAppointmentSettingsForm` を呼び出します。
+起動時にフォームを自動表示する場合は、VBEの `ThisWorkbook` コード画面へ `vba/ThisWorkbook.cls` の `Option Explicit` 以降を貼り付けます。`Workbook_Open` が `ShowAppointmentSettingsForm` の表示を予約します。
