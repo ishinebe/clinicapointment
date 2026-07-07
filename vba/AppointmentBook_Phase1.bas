@@ -3,7 +3,7 @@ Option Explicit
 '============================================================
 ' ClinicAppointment
 ' Module: AppointmentBook
-' Version: 2026.07.07-Phase5E-exceptions-clinic-wide
+' Version: 2026.07.07-Phase5F-exceptions-staff-friendly-labels
 '
 ' Important:
 ' - One-day template range is fixed to Template!A1:J46.
@@ -12,7 +12,7 @@ Option Explicit
 ' - Settings!B7:F13 is one-cell complete:
 '   blank = normal, 休 = off, 午前のみ / xx:xxまで = short-time work.
 ' - Settings!B16:F16 is clinic-wide monthly default close time.
-' - Exceptions handles date-specific clinic-wide 休診 and 時短診療.
+' - Exceptions handles date-specific 休診, 時短診療, 休み, and 時短勤務.
 '============================================================
 
 Private Const SHEET_TEMPLATE As String = "Template"
@@ -263,20 +263,23 @@ Private Sub SetupExceptionsSheet()
     With wsE.Range("B2:B100").Validation
         .Delete
         .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Operator:=xlBetween, _
-             Formula1:="休診,時短診療"
+             Formula1:="休診,時短診療,休み,時短勤務"
         .IgnoreBlank = True
         .InCellDropdown = True
         .InputTitle = "例外種別"
-        .InputMessage = "学会休み等は休診、医院全体の単発時短は時短診療を選択してください。"
+        .InputMessage = "医院全体は休診/時短診療、スタッフ個別は休み/時短勤務を選択してください。"
         .ErrorTitle = "入力できません"
-        .ErrorMessage = "休診または時短診療を選択してください。"
+        .ErrorMessage = "休診、時短診療、休み、時短勤務から選択してください。"
     End With
 
     With wsE.Range("C2:C100").Validation
         .Delete
-        .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Operator:=xlBetween, Formula1:="全体"
+        .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Operator:=xlBetween, _
+             Formula1:="全体,Dr1,Dr2,予備,DH1,DH2"
         .IgnoreBlank = True
         .InCellDropdown = True
+        .InputTitle = "対象"
+        .InputMessage = "医院全体は全体、スタッフ個別はDr1/Dr2/予備/DH1/DH2を選択してください。"
     End With
 
     With wsE.Range("D2:D100").Validation
@@ -286,7 +289,7 @@ Private Sub SetupExceptionsSheet()
         .IgnoreBlank = True
         .InCellDropdown = True
         .InputTitle = "終了時刻"
-        .InputMessage = "時短診療の場合だけ選択してください。"
+        .InputMessage = "時短診療または時短勤務の場合だけ選択してください。"
     End With
 
 End Sub
@@ -437,7 +440,7 @@ Private Sub ApplyOperationalInfo(ByVal wsO As Worksheet, ByVal wsS As Worksheet,
     ReplaceStaffHeadersIfConfigured wsO, wsS, pasteRow
     ApplyStaffWorkPatternIfConfigured wsO, wsS, pasteRow, currentDate
     ApplyClinicHoursInBlock wsO, wsS, templateRange, pasteRow, currentDate
-    ApplyClinicWideExceptions wsO, templateRange, pasteRow, currentDate
+    ApplyExceptions wsO, templateRange, pasteRow, currentDate
 
 End Sub
 
@@ -626,7 +629,31 @@ Private Sub GetStaffTargetColumns(ByRef targetCols() As Long)
 
 End Sub
 
-Private Sub ApplyClinicWideExceptions(ByVal wsO As Worksheet, ByVal templateRange As Range, ByVal pasteRow As Long, ByVal currentDate As Date)
+Private Function TryGetExceptionTargetColumn(ByVal targetText As String, ByRef targetCol As Long) As Boolean
+
+    Select Case Trim$(targetText)
+        Case "Dr1"
+            targetCol = STAFF_COL_1
+            TryGetExceptionTargetColumn = True
+        Case "Dr2"
+            targetCol = STAFF_COL_2
+            TryGetExceptionTargetColumn = True
+        Case "予備"
+            targetCol = STAFF_COL_3
+            TryGetExceptionTargetColumn = True
+        Case "DH1"
+            targetCol = STAFF_COL_4
+            TryGetExceptionTargetColumn = True
+        Case "DH2"
+            targetCol = STAFF_COL_5
+            TryGetExceptionTargetColumn = True
+        Case Else
+            TryGetExceptionTargetColumn = False
+    End Select
+
+End Function
+
+Private Sub ApplyExceptions(ByVal wsO As Worksheet, ByVal templateRange As Range, ByVal pasteRow As Long, ByVal currentDate As Date)
 
     If Not SheetExists(SHEET_EXCEPTIONS) Then Exit Sub
 
@@ -641,6 +668,8 @@ Private Sub ApplyClinicWideExceptions(ByVal wsO As Worksheet, ByVal templateRang
     Dim r As Long
     Dim exceptionDate As Date
     Dim exceptionType As String
+    Dim targetText As String
+    Dim targetCol As Long
     Dim closeTime As Date
 
     For r = 2 To lastRow
@@ -648,16 +677,37 @@ Private Sub ApplyClinicWideExceptions(ByVal wsO As Worksheet, ByVal templateRang
             exceptionDate = DateValue(wsE.Cells(r, "A").Value)
             If exceptionDate = currentDate Then
                 exceptionType = Trim$(CStr(wsE.Cells(r, "B").Value))
+                targetText = Trim$(CStr(wsE.Cells(r, "C").Value))
 
-                If exceptionType = "休診" Then
-                    ShadeRows wsO, pasteRow + FIRST_TIME_ROW - 1, pasteRow + LAST_TIME_ROW - 1, _
-                              templateRange.Column, templateRange.Column + templateRange.Columns.Count - 1
-                    PutClosedLabel wsO, pasteRow, templateRange
-                ElseIf exceptionType = "時短診療" Then
-                    If TryParseTimeText(Trim$(CStr(wsE.Cells(r, "D").Value)), closeTime) Then
-                        ShadeBlockFromTime wsO, templateRange, pasteRow, closeTime
-                    End If
-                End If
+                Select Case exceptionType
+                    Case "休診"
+                        If targetText = "" Or targetText = "全体" Then
+                            ShadeRows wsO, pasteRow + FIRST_TIME_ROW - 1, pasteRow + LAST_TIME_ROW - 1, _
+                                      templateRange.Column, templateRange.Column + templateRange.Columns.Count - 1
+                            PutClosedLabel wsO, pasteRow, templateRange
+                        End If
+
+                    Case "時短診療"
+                        If targetText = "" Or targetText = "全体" Then
+                            If TryParseTimeText(Trim$(CStr(wsE.Cells(r, "D").Value)), closeTime) Then
+                                ShadeBlockFromTime wsO, templateRange, pasteRow, closeTime
+                            End If
+                        End If
+
+                    Case "休み"
+                        If TryGetExceptionTargetColumn(targetText, targetCol) Then
+                            ShadeStaffSlot wsO, pasteRow, targetCol
+                            MarkStaffHeaderOff wsO, pasteRow, targetCol
+                        End If
+
+                    Case "時短勤務"
+                        If TryGetExceptionTargetColumn(targetText, targetCol) Then
+                            If TryParseTimeText(Trim$(CStr(wsE.Cells(r, "D").Value)), closeTime) Then
+                                ShadeStaffSlotFromTime wsO, pasteRow, targetCol, closeTime
+                                MarkStaffHeaderUntil wsO, pasteRow, targetCol, Format$(closeTime, "h:mm")
+                            End If
+                        End If
+                End Select
             End If
         End If
     Next r
@@ -1010,7 +1060,7 @@ Public Sub CheckAppointmentBook_Phase1()
            "Settings!B5:F5 = Staff headers" & vbCrLf & _
            "Settings!B7:F13 = Work pattern" & vbCrLf & _
            "Settings!B16:F16 = Clinic monthly close time" & vbCrLf & _
-           "Exceptions: date-specific clinic-wide exceptions" & vbCrLf & _
+           "Exceptions: 休診 / 時短診療 / 休み / 時短勤務" & vbCrLf & _
            "Blank in B7:F13 means normal work." & vbCrLf & _
            "Options include 休, 午前のみ, and xx:xxまで." & vbCrLf & _
            "Staff mapping: B5->B, C5->D, D5->F, E5->I, F5->J" & vbCrLf & vbCrLf & _
