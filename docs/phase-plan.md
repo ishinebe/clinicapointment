@@ -12,7 +12,7 @@ Output   = 最終印刷用出力
 現行アポ帳に合わせるための見た目調整は、テンプレート作成作業時に完了済み。
 そのため、以後のマクロ実装では `Template!A1:J46` を正解デザインとして扱い、日付など必要最小限の値だけを差し替える。
 
-現在はUI改善フェーズとして、`Settings` シートを受付・歯科助手向けの操作画面として整備する。既存生成ロジックとの互換性維持のため、`Settings!B2`、`Settings!B3`、`Settings!B5:F5`、`Settings!B7:F13`、`Settings!B16:F16`、`Settings!H5:H24` は固定セルとして残す。
+現在はUserForm化フェーズとして、`frmAppointmentSettings` を受付・歯科助手向けの月次アポ帳作成フォームとして追加する。UserFormは `Settings` セルを直接置き換えるものではなく、既存セルへの入力補助画面とする。既存生成ロジックとの互換性維持のため、`Settings!B2`、`Settings!B3`、`Settings!B5:F5`、`Settings!B7:F13`、`Settings!B16:F16`、`Settings!H5:H24` は固定セルとして残す。
 
 ---
 
@@ -31,6 +31,7 @@ Output   = 最終印刷用出力
 - Settings UI改善フェーズとして、`Settings` シートを「アポ帳作成 設定画面」に整備する方針へ進んだ。
 - `SetupSettingsDropdowns` / `SetupUserFriendlySettings` で、説明文、入力セルの色分け、プルダウン、作成ボタンを配置する。
 - `Template` は確定済みデザインマスター、`Output` は生成結果として扱い、Settings UI改善では原則として見た目や生成ロジックを変更しない。
+- Phase 7として、`ShowAppointmentSettingsForm` と `frmAppointmentSettings` を追加し、フォームからSettingsへ保存して生成できる方針へ進んだ。
 
 ---
 
@@ -131,3 +132,31 @@ Exceptions、祝日、臨時休診、PDF出力、集計機能を追加する。
 4. 必要なら曜日別勤務パターンを設定する。
 5. 必要なら `Exceptions` を入力する。
 6. `Settings` の「アポ帳を作成」ボタンを押す。
+
+---
+
+## Phase 7: UserForm化
+
+受付・歯科助手が `Settings` シートを直接編集しなくても月次設定と生成を行えるように、最小構成のUserFormを追加する。
+
+UserFormは `Settings` を置き換えない。あくまで `Settings!B2/B3/B5:F5/B7:F13/B16/H5:H24` への入力補助画面として扱い、既存のSettings直接入力と既存ボタン運用も残す。
+
+### 実装対象
+
+- [x] `frmAppointmentSettings` を追加する。
+- [x] `ShowAppointmentSettingsForm` を追加する。
+- [x] 作成年月、担当者、曜日別勤務パターン、医院全体の当月終了時刻をフォームで編集できる。
+- [x] フォーム起動時に `Settings` の既存値を読み込む。
+- [x] 「設定を保存」でフォームの値を `Settings` へ書き戻す。
+- [x] 「アポ帳を作成」で保存後に `GenerateAppointmentBook_Phase5` を実行する。
+- [x] 「例外日付を更新」で年月を保存後に `SetupExceptionsDateDropdowns` を実行する。
+- [x] `Settings` シートに「設定フォームを開く」ボタンを追加する。
+- [x] Exceptionsの詳細入力は既存シート運用を維持する。
+
+### 通常の使用手順
+
+1. 初回は `SetupUserFriendlySettings` または `SetupSettingsDropdowns` を実行する。
+2. `ShowAppointmentSettingsForm` または `Settings` の「設定フォームを開く」ボタンでフォームを開く。
+3. フォームで月次設定を入力する。
+4. 必要なら `Exceptions` を入力する。
+5. フォームの「アポ帳を作成」ボタンを押す。

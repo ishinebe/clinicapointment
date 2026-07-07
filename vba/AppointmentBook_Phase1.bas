@@ -3,7 +3,7 @@ Option Explicit
 '============================================================
 ' ClinicAppointment
 ' Module: AppointmentBook
-' Version: 2026.07.07-Phase6B-form-style-settings-ui
+' Version: 2026.07.07-Phase7A-userform-settings
 '
 ' Important:
 ' - One-day template range is fixed to Template!A1:J46.
@@ -30,6 +30,7 @@ Private Const SETTINGS_WORK_PATTERN_RANGE As String = "B7:F13"
 Private Const SETTINGS_STAFF_MASTER_RANGE As String = "H5:H24"
 Private Const SETTINGS_MONTHLY_CLOSE_CELL As String = "B16"
 Private Const SETTINGS_MONTHLY_CLOSE_RANGE As String = "B16:F16"
+Private Const BUTTON_OPEN_SETTINGS_FORM As String = "btnOpenSettingsForm"
 Private Const BUTTON_CREATE_APPOINTMENT As String = "btnCreateAppointmentBook"
 Private Const BUTTON_REFRESH_EXCEPTION_DATES As String = "btnRefreshExceptionDates"
 
@@ -96,6 +97,7 @@ Public Sub SetupSettingsDropdowns()
     ApplyWorkPatternDropdowns wsS
     ApplyMonthlyCloseDropdown wsS
     SetupExceptionsSheet
+    CreateOpenSettingsFormButton
     CreateAppointmentBookButton
     CreateRefreshExceptionDatesButton
 
@@ -126,6 +128,22 @@ End Sub
 
 Public Sub SetupUserFriendlySettings()
     SetupSettingsDropdowns
+End Sub
+
+Public Sub ShowAppointmentSettingsForm()
+    frmAppointmentSettings.Show
+End Sub
+
+Public Sub CreateOpenSettingsFormButton()
+
+    Dim wsS As Worksheet
+    Set wsS = GetSheetOrError(SHEET_SETTINGS)
+
+    DeleteShapeIfExists wsS, BUTTON_OPEN_SETTINGS_FORM
+    AddSettingsButton wsS, BUTTON_OPEN_SETTINGS_FORM, "設定フォームを開く", _
+        "ShowAppointmentSettingsForm", wsS.Range("A21"), 340, 38, _
+        RGB(91, 155, 213), RGB(255, 255, 255)
+
 End Sub
 
 Public Sub CreateAppointmentBookButton()
@@ -192,7 +210,7 @@ Private Sub ApplySettingsLabels(ByVal wsS As Worksheet)
     PrepareMonthlyCloseVisualRange wsS
 
     wsS.Range("A18").Value = "通常は空欄。その月だけ早く閉める場合に選択。"
-    wsS.Range("A23").Value = "5. 作成"
+    wsS.Range("A20").Value = "5. 作成"
     wsS.Range("H2").Value = "スタッフ一覧"
     wsS.Range("H3").Value = "ここに名前を追加すると、担当者欄で選べます。"
     wsS.Range("H4").Value = "担当者マスター"
@@ -219,6 +237,7 @@ Private Sub PrepareSettingsVisualBase(ByVal wsS As Worksheet)
 
     DeleteShapeIfExists wsS, BUTTON_CREATE_APPOINTMENT
     DeleteShapeIfExists wsS, BUTTON_REFRESH_EXCEPTION_DATES
+    DeleteShapeIfExists wsS, BUTTON_OPEN_SETTINGS_FORM
 
     With wsS.Range("A1:J25")
         .UnMerge
@@ -243,7 +262,7 @@ Private Sub PrepareSettingsVisualBase(ByVal wsS As Worksheet)
         .Rows("2").RowHeight = 26
         .Rows("3:5").RowHeight = 24
         .Rows("6:18").RowHeight = 23
-        .Rows("23:25").RowHeight = 26
+        .Rows("20:25").RowHeight = 26
     End With
 
     wsS.Range("A1:J1").Merge
@@ -252,7 +271,7 @@ Private Sub PrepareSettingsVisualBase(ByVal wsS As Worksheet)
     wsS.Range("A14:F14").Merge
     wsS.Range("A15:F15").Merge
     wsS.Range("A18:F18").Merge
-    wsS.Range("A23:F23").Merge
+    wsS.Range("A20:F20").Merge
     wsS.Range("H2:J2").Merge
     wsS.Range("H3:J3").Merge
 
@@ -286,7 +305,7 @@ Private Sub ApplySettingsVisualFormat(ByVal wsS As Worksheet)
         .VerticalAlignment = xlCenter
     End With
 
-    With wsS.Range("C2:F2,A4:F4,A6:F6,A15:F15,A23:F23,H2:J2")
+    With wsS.Range("C2:F2,A4:F4,A6:F6,A15:F15,A20:F20,H2:J2")
         .Font.Size = 12
         .Font.Bold = True
         .Font.Color = RGB(255, 255, 255)
@@ -329,12 +348,12 @@ Private Sub ApplySettingsVisualFormat(ByVal wsS As Worksheet)
     wsS.Range(SETTINGS_WORK_PATTERN_RANGE).HorizontalAlignment = xlCenter
     wsS.Range(SETTINGS_MONTHLY_CLOSE_RANGE).HorizontalAlignment = xlCenter
 
-    With wsS.Range("A2:F3,A4:F5,A6:F14,A15:F18,A23:F25,H2:J24")
+    With wsS.Range("A2:F3,A4:F5,A6:F14,A15:F18,A20:F25,H2:J24")
         .Borders.LineStyle = xlContinuous
         .Borders.Color = borderColor
     End With
 
-    With wsS.Range("C2:F2,A4:F4,A6:F6,A15:F15,A23:F23,H2:J2").Borders(xlEdgeBottom)
+    With wsS.Range("C2:F2,A4:F4,A6:F6,A15:F15,A20:F20,H2:J2").Borders(xlEdgeBottom)
         .LineStyle = xlContinuous
         .Weight = xlMedium
         .Color = RGB(31, 78, 121)
