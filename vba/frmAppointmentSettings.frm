@@ -97,7 +97,7 @@ Private Sub BuildForm()
 
     Set btnSave = AddButton("btnSave", "設定を保存", 24, 458, 110, 28)
     Set btnCreate = AddButton("btnCreate", "アポ帳を作成", 148, 458, 120, 28)
-    Set btnRefreshExceptionDates = AddButton("btnRefreshExceptionDates", "例外日付を更新", 282, 458, 130, 28)
+    Set btnRefreshExceptionDates = AddButton("btnRefreshExceptionDates", "臨時予定を編集", 282, 458, 130, 28)
     Set btnClose = AddButton("btnClose", "閉じる", 426, 458, 90, 28)
 
 End Sub
@@ -438,6 +438,7 @@ Private Sub btnRefreshExceptionDates_Click()
 
     If SaveSettings(False, True) Then
         SetupExceptionsDateDropdowns
+        frmTemporarySchedule.Show
     End If
 
 End Sub

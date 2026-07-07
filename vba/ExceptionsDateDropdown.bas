@@ -49,13 +49,13 @@ Public Sub SetupExceptionsDateDropdowns()
 
     Application.ScreenUpdating = True
 
-    MsgBox "Exceptionsシートの日付プルダウンを設定しました。" & vbCrLf & _
+    MsgBox "臨時予定の日付候補を更新しました。" & vbCrLf & _
            targetYear & "年" & targetMonth & "月の日付から選択できます。", vbInformation
     Exit Sub
 
 ErrorHandler:
     Application.ScreenUpdating = True
-    MsgBox "Exceptionsシートの日付プルダウン設定中にエラーが発生しました。" & vbCrLf & _
+    MsgBox "臨時予定の日付候補更新中にエラーが発生しました。" & vbCrLf & _
            "Number: " & Err.Number & vbCrLf & _
            "Description: " & Err.Description, vbCritical
 

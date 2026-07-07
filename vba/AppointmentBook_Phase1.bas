@@ -3,7 +3,7 @@ Option Explicit
 '============================================================
 ' ClinicAppointment
 ' Module: AppointmentBook
-' Version: 2026.07.07-Phase7A-userform-settings
+' Version: 2026.07.07-Phase8A-temporary-schedule-form
 '
 ' Important:
 ' - One-day template range is fixed to Template!A1:J46.
@@ -31,6 +31,7 @@ Private Const SETTINGS_STAFF_MASTER_RANGE As String = "H5:H24"
 Private Const SETTINGS_MONTHLY_CLOSE_CELL As String = "B16"
 Private Const SETTINGS_MONTHLY_CLOSE_RANGE As String = "B16:F16"
 Private Const BUTTON_OPEN_SETTINGS_FORM As String = "btnOpenSettingsForm"
+Private Const BUTTON_OPEN_TEMPORARY_SCHEDULE As String = "btnOpenTemporarySchedule"
 Private Const BUTTON_CREATE_APPOINTMENT As String = "btnCreateAppointmentBook"
 Private Const BUTTON_REFRESH_EXCEPTION_DATES As String = "btnRefreshExceptionDates"
 
@@ -98,6 +99,7 @@ Public Sub SetupSettingsDropdowns()
     ApplyMonthlyCloseDropdown wsS
     SetupExceptionsSheet
     CreateOpenSettingsFormButton
+    CreateTemporaryScheduleButton
     CreateAppointmentBookButton
     CreateRefreshExceptionDatesButton
 
@@ -134,6 +136,10 @@ Public Sub ShowAppointmentSettingsForm()
     frmAppointmentSettings.Show
 End Sub
 
+Public Sub ShowTemporaryScheduleForm()
+    frmTemporarySchedule.Show
+End Sub
+
 Public Sub CreateOpenSettingsFormButton()
 
     Dim wsS As Worksheet
@@ -141,8 +147,20 @@ Public Sub CreateOpenSettingsFormButton()
 
     DeleteShapeIfExists wsS, BUTTON_OPEN_SETTINGS_FORM
     AddSettingsButton wsS, BUTTON_OPEN_SETTINGS_FORM, "設定フォームを開く", _
-        "ShowAppointmentSettingsForm", wsS.Range("A21"), 340, 38, _
+        "ShowAppointmentSettingsForm", wsS.Range("A21"), 170, 38, _
         RGB(91, 155, 213), RGB(255, 255, 255)
+
+End Sub
+
+Public Sub CreateTemporaryScheduleButton()
+
+    Dim wsS As Worksheet
+    Set wsS = GetSheetOrError(SHEET_SETTINGS)
+
+    DeleteShapeIfExists wsS, BUTTON_OPEN_TEMPORARY_SCHEDULE
+    AddSettingsButton wsS, BUTTON_OPEN_TEMPORARY_SCHEDULE, "臨時予定を編集", _
+        "ShowTemporaryScheduleForm", wsS.Range("D21"), 170, 38, _
+        RGB(112, 173, 71), RGB(255, 255, 255)
 
 End Sub
 
@@ -164,7 +182,7 @@ Public Sub CreateRefreshExceptionDatesButton()
     Set wsS = GetSheetOrError(SHEET_SETTINGS)
 
     DeleteShapeIfExists wsS, BUTTON_REFRESH_EXCEPTION_DATES
-    AddSettingsButton wsS, BUTTON_REFRESH_EXCEPTION_DATES, "例外日付を更新", _
+    AddSettingsButton wsS, BUTTON_REFRESH_EXCEPTION_DATES, "日付候補を更新", _
         "SetupExceptionsDateDropdowns", wsS.Range("D24"), 170, 42, _
         RGB(112, 173, 71), RGB(255, 255, 255)
 
@@ -238,6 +256,7 @@ Private Sub PrepareSettingsVisualBase(ByVal wsS As Worksheet)
     DeleteShapeIfExists wsS, BUTTON_CREATE_APPOINTMENT
     DeleteShapeIfExists wsS, BUTTON_REFRESH_EXCEPTION_DATES
     DeleteShapeIfExists wsS, BUTTON_OPEN_SETTINGS_FORM
+    DeleteShapeIfExists wsS, BUTTON_OPEN_TEMPORARY_SCHEDULE
 
     With wsS.Range("A1:J25")
         .UnMerge
@@ -556,7 +575,7 @@ Private Sub SetupExceptionsSheet()
              Formula1:="休診,時短診療,休み,時短勤務"
         .IgnoreBlank = True
         .InCellDropdown = True
-        .InputTitle = "例外種別"
+        .InputTitle = "臨時予定の内容"
         .InputMessage = "医院全体は休診/時短診療、スタッフ個別は休み/時短勤務を選択してください。"
         .ErrorTitle = "入力できません"
         .ErrorMessage = "休診、時短診療、休み、時短勤務から選択してください。"
