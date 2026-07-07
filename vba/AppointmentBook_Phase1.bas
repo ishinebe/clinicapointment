@@ -3,7 +3,7 @@ Option Explicit
 '============================================================
 ' ClinicAppointment
 ' Module: AppointmentBook
-' Version: 2026.07.07-Phase6A-user-friendly-settings-ui
+' Version: 2026.07.07-Phase6B-form-style-settings-ui
 '
 ' Important:
 ' - One-day template range is fixed to Template!A1:J46.
@@ -135,7 +135,7 @@ Public Sub CreateAppointmentBookButton()
 
     DeleteShapeIfExists wsS, BUTTON_CREATE_APPOINTMENT
     AddSettingsButton wsS, BUTTON_CREATE_APPOINTMENT, "アポ帳を作成", _
-        "GenerateAppointmentBook_Phase5", wsS.Range("A21"), 170, 42, _
+        "GenerateAppointmentBook_Phase5", wsS.Range("A24"), 170, 42, _
         RGB(47, 117, 181), RGB(255, 255, 255)
 
 End Sub
@@ -147,7 +147,7 @@ Public Sub CreateRefreshExceptionDatesButton()
 
     DeleteShapeIfExists wsS, BUTTON_REFRESH_EXCEPTION_DATES
     AddSettingsButton wsS, BUTTON_REFRESH_EXCEPTION_DATES, "例外日付を更新", _
-        "SetupExceptionsDateDropdowns", wsS.Range("D21"), 170, 42, _
+        "SetupExceptionsDateDropdowns", wsS.Range("D24"), 170, 42, _
         RGB(112, 173, 71), RGB(255, 255, 255)
 
 End Sub
@@ -161,24 +161,22 @@ Private Sub ApplySettingsLabels(ByVal wsS As Worksheet)
     wsS.Range("A2").Value = "年"
     wsS.Range("A3").Value = "月"
     wsS.Range("C2").Value = "1. 作成する年月"
-    wsS.Range("C3").Value = "西暦の年と月を入力してください。例: 2027年2月なら、年=2027、月=2。"
+    wsS.Range("C3").Value = "西暦の年と月を入力します"
 
     wsS.Range("A4").Value = "2. 担当者"
+    wsS.Range("A5").Value = "担当者名"
     wsS.Range("B4").Value = "Dr1"
     wsS.Range("C4").Value = "Dr2"
     wsS.Range("D4").Value = "予備枠"
     wsS.Range("E4").Value = "DH1"
     wsS.Range("F4").Value = "DH2"
-    wsS.Range("G4").Value = "担当者マスターから選択します。"
-    wsS.Range("A5").Value = "担当者名"
 
-    wsS.Range("A6").Value = "3. 曜日別の休み・早上がり"
+    wsS.Range("A6").Value = "3. 毎週の休み・早上がり"
     wsS.Range("B6").Value = "Dr1"
     wsS.Range("C6").Value = "Dr2"
     wsS.Range("D6").Value = "予備枠"
     wsS.Range("E6").Value = "DH1"
     wsS.Range("F6").Value = "DH2"
-    wsS.Range("G6").Value = "空欄=通常、休=休み、午前のみ=午前勤務、xx:xxまで=その時刻で終了。"
 
     wsS.Range("A7").Value = "月"
     wsS.Range("A8").Value = "火"
@@ -188,17 +186,16 @@ Private Sub ApplySettingsLabels(ByVal wsS As Worksheet)
     wsS.Range("A12").Value = "土"
     wsS.Range("A13").Value = "日"
 
-    wsS.Range("A15").Value = "4. 医院全体の当月終了時刻"
-    wsS.Range("A16").Value = "医院全体の当月原則終了時刻"
-    wsS.Range("G16").Value = "通常は空欄。その月だけ全体的に早く閉める場合のみ選択します。"
+    wsS.Range("A14").Value = "空欄=通常　休=休み　午前のみ=午前勤務　16:00まで=早上がり"
+    wsS.Range("A15").Value = "4. 医院全体の終了時刻"
+    wsS.Range("A16").Value = "全体"
     PrepareMonthlyCloseVisualRange wsS
 
-    wsS.Range("H3").Value = "5. スタッフ一覧"
+    wsS.Range("A18").Value = "通常は空欄。その月だけ早く閉める場合に選択。"
+    wsS.Range("A23").Value = "5. 作成"
+    wsS.Range("H2").Value = "スタッフ一覧"
+    wsS.Range("H3").Value = "ここに名前を追加すると、担当者欄で選べます。"
     wsS.Range("H4").Value = "担当者マスター"
-    wsS.Range("I4").Value = "ここに名前を追加すると、担当者欄のプルダウンに使われます。"
-
-    wsS.Range("A19").Value = "6. 作成"
-    wsS.Range("A20").Value = "設定が終わったら「アポ帳を作成」を押します。年月を変えたときは、必要に応じて「例外日付を更新」も押してください。"
 
     ApplySettingsVisualFormat wsS
 
@@ -206,24 +203,60 @@ End Sub
 
 Private Sub PrepareSettingsVisualBase(ByVal wsS As Worksheet)
 
-    With wsS
-        .Columns("A").ColumnWidth = 16
-        .Columns("B:F").ColumnWidth = 14
-        .Columns("G").ColumnWidth = 34
-        .Columns("H").ColumnWidth = 20
-        .Columns("I:J").ColumnWidth = 24
-        .Rows("1").RowHeight = 32
-        .Rows("4:6").RowHeight = 24
-        .Rows("15:16").RowHeight = 24
-        .Rows("19:21").RowHeight = 26
-    End With
+    Dim yearValue As Variant
+    Dim monthValue As Variant
+    Dim staffHeaderValues As Variant
+    Dim workPatternValues As Variant
+    Dim monthlyCloseValue As Variant
+    Dim staffMasterValues As Variant
 
-    With wsS.Range("A1:J1")
+    yearValue = wsS.Range(SETTINGS_YEAR_CELL).Value
+    monthValue = wsS.Range(SETTINGS_MONTH_CELL).Value
+    staffHeaderValues = wsS.Range(SETTINGS_STAFF_HEADER_RANGE).Value
+    workPatternValues = wsS.Range(SETTINGS_WORK_PATTERN_RANGE).Value
+    monthlyCloseValue = wsS.Range(SETTINGS_MONTHLY_CLOSE_CELL).Value
+    staffMasterValues = wsS.Range(SETTINGS_STAFF_MASTER_RANGE).Value
+
+    DeleteShapeIfExists wsS, BUTTON_CREATE_APPOINTMENT
+    DeleteShapeIfExists wsS, BUTTON_REFRESH_EXCEPTION_DATES
+
+    With wsS.Range("A1:J25")
         .UnMerge
-        .Merge
+        .ClearContents
+        .ClearFormats
     End With
 
-    wsS.Range("C2:J3,G4:J4,G6:J6,G16:J16,H3:J4,A19:J20").WrapText = True
+    wsS.Range(SETTINGS_YEAR_CELL).Value = yearValue
+    wsS.Range(SETTINGS_MONTH_CELL).Value = monthValue
+    wsS.Range(SETTINGS_STAFF_HEADER_RANGE).Value = staffHeaderValues
+    wsS.Range(SETTINGS_WORK_PATTERN_RANGE).Value = workPatternValues
+    wsS.Range(SETTINGS_MONTHLY_CLOSE_CELL).Value = monthlyCloseValue
+    wsS.Range(SETTINGS_STAFF_MASTER_RANGE).Value = staffMasterValues
+
+    With wsS
+        .Columns("A").ColumnWidth = 12
+        .Columns("B:F").ColumnWidth = 13
+        .Columns("G").ColumnWidth = 3
+        .Columns("H").ColumnWidth = 20
+        .Columns("I:J").ColumnWidth = 12
+        .Rows("1").RowHeight = 34
+        .Rows("2").RowHeight = 26
+        .Rows("3:5").RowHeight = 24
+        .Rows("6:18").RowHeight = 23
+        .Rows("23:25").RowHeight = 26
+    End With
+
+    wsS.Range("A1:J1").Merge
+    wsS.Range("C2:F2").Merge
+    wsS.Range("C3:F3").Merge
+    wsS.Range("A14:F14").Merge
+    wsS.Range("A15:F15").Merge
+    wsS.Range("A18:F18").Merge
+    wsS.Range("A23:F23").Merge
+    wsS.Range("H2:J2").Merge
+    wsS.Range("H3:J3").Merge
+
+    wsS.Range("A1:J25").WrapText = False
 
 End Sub
 
@@ -232,10 +265,14 @@ Private Sub ApplySettingsVisualFormat(ByVal wsS As Worksheet)
     Dim inputFill As Long
     Dim sectionFill As Long
     Dim headerFill As Long
+    Dim noteFill As Long
+    Dim borderColor As Long
 
     inputFill = RGB(255, 242, 204)
-    sectionFill = RGB(221, 235, 247)
-    headerFill = RGB(242, 242, 242)
+    sectionFill = RGB(47, 117, 181)
+    headerFill = RGB(221, 235, 247)
+    noteFill = RGB(242, 248, 252)
+    borderColor = RGB(184, 204, 228)
 
     wsS.Cells.Font.Name = "Yu Gothic"
     wsS.Cells.Font.Size = 10
@@ -243,29 +280,40 @@ Private Sub ApplySettingsVisualFormat(ByVal wsS As Worksheet)
     With wsS.Range("A1:J1")
         .Font.Size = 20
         .Font.Bold = True
-        .Font.Color = RGB(31, 78, 121)
-        .Interior.Color = RGB(217, 225, 242)
+        .Font.Color = RGB(255, 255, 255)
+        .Interior.Color = RGB(31, 78, 121)
         .HorizontalAlignment = xlCenter
         .VerticalAlignment = xlCenter
     End With
 
-    With wsS.Range("C2:J2,A4:J4,A6:J6,A15:J15,H3:J3,A19:J19")
+    With wsS.Range("C2:F2,A4:F4,A6:F6,A15:F15,A23:F23,H2:J2")
+        .Font.Size = 12
         .Font.Bold = True
+        .Font.Color = RGB(255, 255, 255)
         .Interior.Color = sectionFill
+        .HorizontalAlignment = xlLeft
         .VerticalAlignment = xlCenter
     End With
 
-    With wsS.Range("B4:F4,B6:F6,H4")
+    With wsS.Range("A2:A3,A5,B4:F4,B6:F6,H4")
         .Font.Bold = True
         .Interior.Color = headerFill
         .HorizontalAlignment = xlCenter
+        .VerticalAlignment = xlCenter
     End With
 
-    With wsS.Range("A2:A3,A7:A13,A16")
+    With wsS.Range("A7:A13,A16")
         .Font.Bold = True
         .HorizontalAlignment = xlCenter
         .VerticalAlignment = xlCenter
         .Interior.Color = headerFill
+    End With
+
+    With wsS.Range("C3:F3,A14:F14,A18:F18,H3:J3")
+        .Interior.Color = noteFill
+        .Font.Color = RGB(89, 89, 89)
+        .HorizontalAlignment = xlLeft
+        .VerticalAlignment = xlCenter
     End With
 
     With wsS.Range(SETTINGS_YEAR_CELL & "," & SETTINGS_MONTH_CELL & "," & _
@@ -273,20 +321,33 @@ Private Sub ApplySettingsVisualFormat(ByVal wsS As Worksheet)
                    SETTINGS_MONTHLY_CLOSE_RANGE & "," & SETTINGS_STAFF_MASTER_RANGE)
         .Interior.Color = inputFill
         .VerticalAlignment = xlCenter
+        .Font.Size = 11
     End With
 
-    wsS.Range(SETTINGS_YEAR_CELL & ":" & SETTINGS_MONTH_CELL).HorizontalAlignment = xlCenter
+    wsS.Range(SETTINGS_YEAR_CELL & "," & SETTINGS_MONTH_CELL).HorizontalAlignment = xlCenter
     wsS.Range(SETTINGS_STAFF_HEADER_RANGE).HorizontalAlignment = xlCenter
     wsS.Range(SETTINGS_WORK_PATTERN_RANGE).HorizontalAlignment = xlCenter
     wsS.Range(SETTINGS_MONTHLY_CLOSE_RANGE).HorizontalAlignment = xlCenter
 
-    With wsS.Range("A2:B3,B4:F5,A6:F13,A15:F16,H4:H24")
+    With wsS.Range("A2:F3,A4:F5,A6:F14,A15:F18,A23:F25,H2:J24")
         .Borders.LineStyle = xlContinuous
-        .Borders.Color = RGB(191, 191, 191)
+        .Borders.Color = borderColor
     End With
 
-    With wsS.Range("C3:J3,G4:J4,G6:J6,G16:J16,I4:J4,A20:J20")
-        .Font.Color = RGB(89, 89, 89)
+    With wsS.Range("C2:F2,A4:F4,A6:F6,A15:F15,A23:F23,H2:J2").Borders(xlEdgeBottom)
+        .LineStyle = xlContinuous
+        .Weight = xlMedium
+        .Color = RGB(31, 78, 121)
+    End With
+
+    With wsS.Range("B2:B3,B5:F5,B7:F13,B16:F16,H5:H24")
+        .Borders.LineStyle = xlContinuous
+        .Borders.Color = RGB(166, 166, 166)
+    End With
+
+    With wsS.Range("G1:G25")
+        .Interior.Color = RGB(255, 255, 255)
+        .Borders.LineStyle = xlNone
     End With
 
 End Sub
