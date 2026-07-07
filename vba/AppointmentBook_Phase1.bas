@@ -678,7 +678,11 @@ Private Sub GenerateAppointmentBookCore(ByVal phaseName As String, Optional ByVa
         pasteRow = pasteRow + blockHeight + BLOCK_GAP_ROWS
     Next d
 
-    CopyTemplatePrintSettings wsT, wsO, templateRange, pasteRow - BLOCK_GAP_ROWS - 1
+    Dim outputLastRow As Long
+    outputLastRow = pasteRow - BLOCK_GAP_ROWS - 1
+
+    ApplyShadeStartTopBorders wsO, templateRange, outputLastRow
+    CopyTemplatePrintSettings wsT, wsO, templateRange, outputLastRow
     If shouldApplyOneDayPageBreaks Then
         ApplyOneDayPageBreaks wsO, templateRange, daysInMonth
     End If
@@ -1450,9 +1454,70 @@ Private Sub ShadeRows(ByVal ws As Worksheet, ByVal firstRow As Long, ByVal lastR
         .PatternColor = RGB(217, 217, 217)
     End With
 
-    With ws.Range(ws.Cells(firstRow, firstCol), ws.Cells(firstRow, lastCol)).Borders(xlEdgeTop)
+End Sub
+
+Private Sub ApplyShadeStartTopBorders(ByVal ws As Worksheet, ByVal templateRange As Range, ByVal lastRow As Long)
+
+    Dim firstCol As Long
+    Dim lastCol As Long
+    Dim rowNumber As Long
+    Dim colNumber As Long
+    Dim startCol As Long
+    Dim targetRange As Range
+
+    firstCol = templateRange.Column
+    lastCol = templateRange.Column + templateRange.Columns.Count - 1
+
+    For rowNumber = 1 To lastRow
+        colNumber = firstCol
+
+        Do While colNumber <= lastCol
+            If IsShadeStartCell(ws, rowNumber, colNumber) Then
+                startCol = colNumber
+
+                Do While colNumber <= lastCol And IsShadeStartCell(ws, rowNumber, colNumber)
+                    colNumber = colNumber + 1
+                Loop
+
+                Set targetRange = ws.Range(ws.Cells(rowNumber, startCol), ws.Cells(rowNumber, colNumber - 1))
+                ApplyThickTopBorder targetRange
+            Else
+                colNumber = colNumber + 1
+            End If
+        Loop
+    Next rowNumber
+
+End Sub
+
+Private Function IsShadeStartCell(ByVal ws As Worksheet, ByVal rowNumber As Long, ByVal colNumber As Long) As Boolean
+
+    If Not IsHatchedCell(ws.Cells(rowNumber, colNumber)) Then Exit Function
+    If rowNumber = 1 Then
+        IsShadeStartCell = True
+    Else
+        IsShadeStartCell = Not IsHatchedCell(ws.Cells(rowNumber - 1, colNumber))
+    End If
+
+End Function
+
+Private Function IsHatchedCell(ByVal targetCell As Range) As Boolean
+
+    On Error GoTo SafeExit
+
+    IsHatchedCell = (targetCell.Interior.Pattern = xlLightDown)
+    Exit Function
+
+SafeExit:
+    IsHatchedCell = False
+
+End Function
+
+Private Sub ApplyThickTopBorder(ByVal targetRange As Range)
+
+    With targetRange.Borders(xlEdgeTop)
         .LineStyle = xlContinuous
         .Weight = xlThick
+        .Color = RGB(0, 0, 0)
     End With
 
 End Sub
