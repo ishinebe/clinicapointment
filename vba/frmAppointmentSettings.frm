@@ -39,7 +39,6 @@ Private workCombos(1 To WEEKDAY_COUNT, 1 To STAFF_SLOT_COUNT) As MSForms.ComboBo
 Private WithEvents btnSave As MSForms.CommandButton
 Private WithEvents btnCreate As MSForms.CommandButton
 Private WithEvents btnRefreshExceptionDates As MSForms.CommandButton
-Private WithEvents btnClose As MSForms.CommandButton
 
 Private Sub UserForm_Initialize()
 
@@ -80,7 +79,7 @@ Private Sub BuildForm()
     AddCard "cardStaff", 296, 98, 424, 86, RGB(246, 253, 247), RGB(169, 208, 142)
     AddStepHeader "lblStaff", "2. 担当者", 312, 110, 380, RGB(34, 139, 76)
     AddNoteLabel "lblStaffNote", "各列に表示する担当者を選びます。", 322, 136, 300, 14
-    AddStaffLabels 286, 150
+    AddStaffLabels 336, 150
     Set cmbDr1 = AddCombo("cmbDr1", 336, 166, 70, 18)
     Set cmbDr2 = AddCombo("cmbDr2", 414, 166, 70, 18)
     Set cmbReserve = AddCombo("cmbReserve", 492, 166, 70, 18)
@@ -98,23 +97,22 @@ Private Sub BuildForm()
     AddWorkPatternGrid 42, 250
     AddGuideBox 586, 292, 110, 78
 
-    AddCard "cardMonthlyClose", 16, 406, 320, 82, RGB(255, 250, 240), RGB(244, 176, 132)
+    AddCard "cardMonthlyClose", 16, 406, 320, 90, RGB(255, 250, 240), RGB(244, 176, 132)
     AddStepHeader "lblMonthlyClose", "4. 医院全体の当月終了時刻", 32, 416, 280, RGB(197, 90, 17)
     AddNoteLabel "lblMonthlyCloseNote", "その月だけ早く閉める場合に選択。", 42, 442, 230, 14
     Set cmbMonthlyClose = AddCombo("cmbMonthlyClose", 42, 464, 92, 18)
     AddMonthlyCloseItems cmbMonthlyClose
 
-    AddCard "cardTemporary", 350, 406, 370, 82, RGB(250, 247, 255), RGB(180, 167, 214)
+    AddCard "cardTemporary", 350, 406, 370, 90, RGB(250, 247, 255), RGB(180, 167, 214)
     AddStepHeader "lblTemporary", "5. 臨時予定の確認・編集", 366, 416, 320, RGB(112, 48, 160)
     AddNoteLabel "lblTemporaryNote", "休診、早上がり、スタッフ休みなどを確認します。", 376, 442, 280, 14
-    Set btnRefreshExceptionDates = AddButton("btnRefreshExceptionDates", "臨時予定を確認・編集", 440, 462, 150, 26)
+    Set btnRefreshExceptionDates = AddButton("btnRefreshExceptionDates", "臨時予定を確認・編集", 440, 456, 150, 26)
 
-    AddCard "cardCreate", 16, 496, 704, 70, RGB(255, 246, 246), RGB(248, 170, 170)
-    AddStepHeader "lblCreate", "6. アポ帳を作成します", 32, 508, 250, RGB(192, 0, 0)
-    AddNoteLabel "lblCreateNote", "上記の内容を確認し、アポ帳を作成します。", 42, 536, 230, 14
-    Set btnCreate = AddButton("btnCreate", "この内容でアポ帳を作成", 286, 518, 190, 32)
-    Set btnSave = AddButton("btnSave", "保存して閉じる", 496, 518, 110, 32)
-    Set btnClose = AddButton("btnClose", "閉じる", 622, 518, 70, 32)
+    AddCard "cardCreate", 16, 506, 704, 60, RGB(255, 246, 246), RGB(248, 170, 170)
+    AddStepHeader "lblCreate", "6. アポ帳を作成します", 32, 518, 250, RGB(192, 0, 0)
+    AddNoteLabel "lblCreateNote", "上記の内容を確認し、アポ帳を作成します。", 42, 544, 230, 14
+    Set btnCreate = AddButton("btnCreate", "この内容でアポ帳を作成", 300, 522, 200, 30)
+    Set btnSave = AddButton("btnSave", "保存して閉じる", 530, 522, 130, 30)
     StylePrimaryButton btnCreate
     StyleSecondaryButton btnRefreshExceptionDates
     StyleSecondaryButton btnSave
@@ -220,11 +218,11 @@ End Sub
 
 Private Sub AddStaffLabels(ByVal leftStart As Double, ByVal topPos As Double)
 
-    AddLabel "lblDr1", "Dr1", leftStart + 50, topPos, 88, 16, True, 9
-    AddLabel "lblDr2", "Dr2", leftStart + 146, topPos, 88, 16, True, 9
-    AddLabel "lblReserve", "予備枠", leftStart + 242, topPos, 88, 16, True, 9
-    AddLabel "lblDH1", "DH1", leftStart + 338, topPos, 88, 16, True, 9
-    AddLabel "lblDH2", "DH2", leftStart + 434, topPos, 88, 16, True, 9
+    AddLabel "lblDr1", "Dr1", leftStart, topPos, 70, 16, True, 9
+    AddLabel "lblDr2", "Dr2", leftStart + 78, topPos, 70, 16, True, 9
+    AddLabel "lblReserve", "予備枠", leftStart + 156, topPos, 70, 16, True, 9
+    AddLabel "lblDH1", "DH1", leftStart + 234, topPos, 70, 16, True, 9
+    AddLabel "lblDH2", "DH2", leftStart + 312, topPos, 70, 16, True, 9
 
 End Sub
 
@@ -584,11 +582,5 @@ Private Sub btnRefreshExceptionDates_Click()
         SetupExceptionsDateDropdowns
         frmTemporarySchedule.Show
     End If
-
-End Sub
-
-Private Sub btnClose_Click()
-
-    Unload Me
 
 End Sub
